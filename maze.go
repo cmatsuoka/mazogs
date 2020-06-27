@@ -313,13 +313,13 @@ func (m *Maze) Display() {
 			c := "  "
 			switch m.area[i*mazeColumns+j] {
 			case internalWall:
-				c = "xx"
+				c = "██"
 			case externalWall:
-				c = "##"
+				c = "▒▒"
 			case sword:
-				c = "->"
+				c = "🗡️ "
 			case thePlayer:
-				c = "P"
+				c = "🧍"
 			}
 			fmt.Printf("%s", c)
 		}
