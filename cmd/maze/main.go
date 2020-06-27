@@ -14,5 +14,6 @@ func main() {
 	m := mazogs.NewMaze()
 	m.Generate(100 * time.Millisecond)
 	m.InsertEntrance()
+	m.Populate()
 	m.Display()
 }

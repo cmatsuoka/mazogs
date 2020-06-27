@@ -12,19 +12,31 @@ const (
 	externalWall
 	sword
 	thePlayer
+	prisonerEyesOpen
+	prisonerEyesClosed
+	mazogEyesOpen
+	mazogEyesClosed
 )
 
 const (
-	mazeRows      = 48
-	mazeColumns   = 64
+	// maze dimensions
+	mazeRows    = 48
+	mazeColumns = 64
+
+	// indexes inside the maze
 	startPosition = 0x1d6
 	entrancePos   = 0x4ff
+
+	numMazogs    = 38
+	numSwords    = 40
+	numPrisoners = 30
 )
 
 type Maze struct {
-	area      []byte
-	genTime   time.Time
-	playerPos int
+	area       []byte
+	genTime    time.Time
+	playerPos  int
+	mazogTable []int
 }
 
 func NewMaze() *Maze {
@@ -44,7 +56,8 @@ func NewMaze() *Maze {
 		area[i] = wall
 	}
 	return &Maze{
-		area: area,
+		area:       area,
+		mazogTable: make([]int, 40),
 	}
 }
 
@@ -116,7 +129,7 @@ func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool
 		}
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
-		pos = mazeColumns + rand.Intn(255)*11
+		pos = mazeColumns + rand.Intn(256)*11
 		for i := 0; i < 6; i++ {
 			if m.area[pos] == space {
 				return pos, false
@@ -260,15 +273,15 @@ func (m *Maze) InsertEntrance() {
 		// The position to the left is not empty.
 		p -= mazeColumns
 		if m.area[p] == space {
-			// Insert an empty location above to link up with the above-left
-			// empty location.
+			// Insert an empty location above to link up with the
+			// above-left empty location.
 			m.area[p+1] = space
 			break
 		}
 		p += mazeColumns
 		if m.area[p] == space {
-			// Insert an empty location below to link up with the below-left
-			// empty location.
+			// Insert an empty location below to link up with the
+			// below-left empty location.
 			m.area[p+1] = space
 			break
 		}
@@ -288,15 +301,15 @@ func (m *Maze) InsertEntrance() {
 		p -= mazeColumns
 		if m.area[p] == space {
 			if m.area[p] == space {
-				// Insert an empty location above to link up with the above-left
-				// empty location.
+				// Insert an empty location above to link up with the
+				// above-left empty location.
 				m.area[p-1] = space
 				break
 			}
 			p += mazeColumns
 			if m.area[p] == space {
-				// Insert an empty location below to link up with the below-left
-				// empty location.
+				// Insert an empty location below to link up with the
+				// below-left empty location.
 				m.area[p-1] = space
 				break
 			}
@@ -305,6 +318,93 @@ func (m *Maze) InsertEntrance() {
 	}
 	m.area[startPos] = thePlayer
 	m.playerPos = startPos
+}
+
+// Populate inserts mazogs, swords and prisoners randomly within the maze. Mazogs can
+// only be placed at empty locations. Swords and prisoners can only be placed where
+// there is an internal wall. No items are placed next to an external wall.
+func (m *Maze) Populate() {
+	// Insert swords at random locations within the maze.
+	for i := 0; i < numSwords; i++ {
+		p := m.randomInternalWallPos()
+		m.area[p] = sword
+	}
+
+	// Insert prisoners at random locations within the maze.
+	for i := 0; i < numPrisoners; i++ {
+		p := m.randomInternalWallPos()
+		m.area[p] = prisonerEyesOpen
+	}
+
+	// Determine random locations within the maze for the mazogs. The addresses
+	// of the mazogs are placed within the mazogs table rather than codes the
+	// mazogs inserted with the maze (this is done afterwards). The routine will
+	// only locate a mazog at the position of an empty location within the maze.
+	// Note that there is nothing to prevent multiple mazogs being placed at
+	// the same location.
+	for i := 0; i < numMazogs; i++ {
+		p := func() int {
+			for {
+				p := randomMazePos()
+				if m.area[p] == space && m.area[p] != externalWall && m.area[p+1] != externalWall {
+					return p
+				}
+			}
+		}()
+		m.mazogTable[i] = p
+	}
+
+	m.insertMazogs()
+}
+
+// insertMazogs inserts all alive mazogs into the maze. It is used from above to
+// insert the mazogs for the first time, and also after clearing the maze when
+// calculating the distance to the treasure/exit. It is called repeatedly from the main
+// loop and if the mazog codes are already in the maze then they are simply overwritten,
+// causing no change. It is also used when examining the maze at the end of the game
+// after clearing the maze and then populating the route to the treasure.
+func (m *Maze) insertMazogs() {
+	for i := 0; i < numMazogs; i++ {
+		mp := m.mazogTable[i]
+		if mp > 0xff00 {
+			// Mazog has been killed.
+			continue
+		}
+		if m.area[mp] == mazogEyesClosed {
+			m.area[mp] = mazogEyesOpen
+		} else {
+			m.area[mp] = mazogEyesClosed
+		}
+	}
+}
+
+// randomInteralWallPos selects a random maze location containing an internal wall. This
+// routine is used when selecting the locations to place swords and prisoners within
+// the maze. It prevents placing a sword or prisoner next to an external wall.
+func (m *Maze) randomInternalWallPos() int {
+	for {
+		p := randomMazePos()
+		if m.area[p] == internalWall && m.area[p-1] != externalWall && m.area[p+1] != externalWall {
+			return p
+		}
+	}
+}
+
+// randomMazePos selects a random maze location. This routine selects a random location
+// within the maze by choosing a random 8-bit number, multiplying it by 11, and offsetting
+// into the maze from the first row that can contain empty location (i.e. the 3rd row).
+// This means that not all positions within the maze can be returned, but they are
+// uniformly distributed throughout the maze.
+//
+// The multiplication by 11 distributes the random number throughout the maze. The maze
+// is 48 rows by 64 columns = 3072 positions. The top and bottom rows are external walls,
+// and the next inner rows are always internal walls. Assuming the maze coordinates are
+// 0 index based then the rows spans 0 to 47, and the first row that can contains game
+// characters is row 2 and the last is row 45. The distribution range is:
+//   0   x 11 = 0               => (0, 0)
+//   255 x 11 = 2805 = 43 re 53 => (45, 53)
+func randomMazePos() int {
+	return rand.Intn(256)*11 + 2*mazeColumns
 }
 
 func (m *Maze) Display() {
@@ -320,6 +420,10 @@ func (m *Maze) Display() {
 				c = "🗡️ "
 			case thePlayer:
 				c = "🧍"
+			case prisonerEyesOpen, prisonerEyesClosed:
+				c = "😬"
+			case mazogEyesOpen, mazogEyesClosed:
+				c = "❌"
 			}
 			fmt.Printf("%s", c)
 		}
