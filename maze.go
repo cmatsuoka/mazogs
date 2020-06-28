@@ -64,11 +64,12 @@ const (
 )
 
 type Maze struct {
-	PlayerPos  int
-	ExitPos    int
-	area       []byte
-	genTime    time.Time
-	mazogTable []int
+	PlayerPos       int
+	ExitPos         int
+	area            []byte
+	genTime         time.Time
+	mazogTable      []int
+	codeAtPlayerPos byte
 }
 
 func NewMaze() *Maze {
@@ -164,16 +165,16 @@ func newStartPosition(m *Maze, genTimeout time.Duration) (pos int, timeout bool)
 		}
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
-		pos = MazeColumns + rand.Intn(256)*11
+		p := 2*MazeColumns + rand.Intn(256)*11
 		for i := 0; i < 6; i++ {
-			if m.area[pos] == Empty {
-				return pos, false
+			if m.area[p] == Empty {
+				return p, false
 			}
 			// The location is not empty, i.e. it contains an internal
 			// wall. So check for an empty location within the 6 positions
 			// to the right.If an empty location is found then this is
 			// used as the starting position for a new path.
-			pos++
+			p++
 		}
 		// An empty location was not found near the randomly selected location
 		// so jump back to select a new random location to try.
@@ -296,6 +297,8 @@ func countCode(m *Maze, what byte) (count int) {
 
 // clearMaze clears the maze of mazogs, trails, and 'This Way's
 func clearMaze(m *Maze) {
+	p := m.PlayerPos
+	m.codeAtPlayerPos = m.area[p]
 	for i, code := range m.area {
 		switch code {
 		case Trail, ThisWay, Mazog, Mazog2:
@@ -325,26 +328,42 @@ func clearMaze(m *Maze) {
 // route through the maze in place.
 func (m *Maze) TraceRoute() {
 	p := m.PlayerPos
-	for _, what := range []byte{Treasure, Treasure2, Exit, Empty, ThisWay} {
-		newPos, found := checkSurroundings(m, p, what)
-		if found {
-			p = newPos
-			switch what {
-			case Treasure, Treasure2, Exit:
-				break
-			case Empty:
-				// An empty location was found to the left, right, above or below.
-				m.area[p] = ThisWay
-			case ThisWay:
-				// 'This Way' was found to the left, right, above or below. The
-				// search will always favour an empty location and so if an empty
-				// location was not found but a 'This Way' was found then it means
-				// that a dead end was reached. The search is then back-tracked
-				// along the route that was previously followed. The location is
-				// marked as a dead end, which eventually will leave only those
-				// 'This Way' entries that form part of the route.
-				m.area[p] = DeadEnd
+
+	tryNewPos := func() (stopTrying bool) {
+		for _, what := range []byte{Treasure, Treasure2, Exit, Empty, ThisWay} {
+			newPos, found := checkSurroundings(m, p, what)
+			if found {
+				switch what {
+				case Treasure, Treasure2, Exit:
+					return true
+				case Empty:
+					// An empty location was found to the left, right, above or below.
+					m.area[p] = ThisWay
+					p = newPos
+					return false
+				default:
+					// 'This Way' was found to the left, right, above or below. The
+					// search will always favour an empty location and so if an empty
+					// location was not found but a 'This Way' was found then it means
+					// that a dead end was reached. The search is then back-tracked
+					// along the route that was previously followed. The location is
+					// marked as a dead end, which eventually will leave only those
+					// 'This Way' entries that form part of the route.
+					m.area[p] = DeadEnd
+					p = newPos
+					return false
+				}
 			}
+		}
+		// Was searching for 'This Way' but failed to find it. Must be at the exit.
+		return true
+	}
+
+	// Enter a loop to search for a specific maze code (treasure #1, treasure #2, exit,
+	// empty location or 'This Way') at the current location.
+	for {
+		if tryNewPos() {
+			break
 		}
 	}
 	// Reached the treasure #1, treasure #2 or exit. The exit will only be in the maze after
@@ -353,6 +372,8 @@ func (m *Maze) TraceRoute() {
 	m.area[p] = ThisWay
 	// Now remove all dead end markers and replace with empty locations. This will leave
 	// 'This Way' markers along the route to the treasure or exit.
+	p = m.PlayerPos
+	m.area[p] = m.codeAtPlayerPos
 	for i, code := range m.area {
 		if code == DeadEnd {
 			m.area[i] = Empty
@@ -361,7 +382,7 @@ func (m *Maze) TraceRoute() {
 }
 
 func checkSurroundings(m *Maze, p int, what byte) (newPos int, found bool) {
-	for newPos := range []int{p - 1, p + 1, p - MazeColumns, p + MazeColumns} {
+	for _, newPos := range []int{p - 1, p + 1, p - MazeColumns, p + MazeColumns} {
 		if m.area[newPos] == what {
 			return newPos, true
 		}

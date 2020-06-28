@@ -28,7 +28,11 @@ func displayMap(themap []byte) {
 			case mazogs.Treasure, mazogs.Treasure2:
 				c = "💰"
 			case mazogs.ThisWay:
-				c = "TW"
+				c = "**"
+			case mazogs.DeadEnd:
+				c = "xx"
+			case mazogs.Exit:
+				c = ">>"
 			}
 			fmt.Printf("%s", c)
 		}
@@ -42,15 +46,18 @@ func main() {
 	m.AddTreasure()
 
 	count := func() int {
-		for {
+		var count int
+		for i := 0; i < 5; i++ {
 			timeout := 512 + rand.Intn(512)
 			m.Generate(time.Duration(timeout) * time.Millisecond)
 			// Fetch the number of empty locations. Continue if the maze is complex enough.
-			count := m.CountEmpty()
+			count = m.CountEmpty()
 			if count >= 1200 {
 				return count
 			}
+			fmt.Println("Maze is not complex enough, try again.")
 		}
+		return count
 	}()
 
 	m.InsertEntrance()
