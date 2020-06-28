@@ -10,7 +10,7 @@ const (
 	Empty                    byte = 0x00 // whitespace
 	ExternalWall             byte = 0x08 // checkerboard
 	DeadEnd                  byte = 0x88 // inverse checkerboard
-	InternalWall             byte = 0x7f // black block
+	InternalWall             byte = 0x80 // black block
 	Trail                    byte = 0x1b // period
 	Exit                     byte = 0x0d // dollar
 	ThisWay                  byte = 0x17 // asterisk
@@ -55,9 +55,9 @@ const (
 	MazeColumns = 64
 
 	// indexes inside the maze
-	startPosition = 0x1d6
-	entrancePos   = 0x4ff
+	entrancePos = 0x4ff
 
+	// amount of items and creatures
 	numMazogs    = 38
 	numSwords    = 40
 	numPrisoners = 30
@@ -65,6 +65,7 @@ const (
 
 type Maze struct {
 	PlayerPos  int
+	ExitPos    int
 	area       []byte
 	genTime    time.Time
 	mazogTable []int
@@ -111,7 +112,7 @@ func (m *Maze) Map() []byte {
 // expires.
 func (m *Maze) Generate(genTimeout time.Duration) {
 	m.genTime = time.Now()
-	pos := startPosition
+	pos := m.PlayerPos
 
 	for {
 		direction := rand.Intn(4)
@@ -293,8 +294,8 @@ func countCode(m *Maze, what byte) (count int) {
 	return count
 }
 
-// Clear clears the maze of mazogs, trails, and 'This Way's
-func (m *Maze) Clear() {
+// clearMaze clears the maze of mazogs, trails, and 'This Way's
+func clearMaze(m *Maze) {
 	for i, code := range m.area {
 		switch code {
 		case Trail, ThisWay, Mazog, Mazog2:
@@ -452,6 +453,40 @@ func (m *Maze) Animate(p int) {
 	case Prisoner, Prisoner2, Treasure, Treasure2, Mazog, Mazog2:
 		m.area[p] += 0x80
 	}
+}
+
+func (m *Maze) AddTreasure() int {
+	for {
+		// Select a random location between row 2 column 0 and row 45 column 58.
+		p := 2*MazeColumns + rand.Intn(44*MazeColumns-6)
+		if m.area[p] != ExternalWall && m.area[p-1] != ExternalWall && m.area[p+1] != ExternalWall {
+			// Set the player at the location of the treasure
+			m.PlayerPos = p
+			// Insert the treasure ['T'] into the maze.
+			m.area[p] = Treasure
+			return p
+		}
+	}
+}
+
+func (m *Maze) ChooseEntrance(dir int) {
+	p := m.PlayerPos
+	m.ExitPos = p
+	if dir > 0 {
+		// Enter maze from the right
+		m.area[p-1] = InternalWall
+	} else {
+		// Enter maze from the left
+		m.area[p+1] = InternalWall
+	}
+}
+
+func (m *Maze) Distance() int {
+	clearMaze(m)
+	m.TraceRoute()
+	moves := countCode(m, ThisWay)
+	//clearMaze(m)
+	return moves
 }
 
 // Populate inserts mazogs, swords and prisoners randomly within the maze. Mazogs can

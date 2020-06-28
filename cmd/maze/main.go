@@ -25,19 +25,38 @@ func displayMap(themap []byte) {
 				c = "😬"
 			case mazogs.Mazog, mazogs.Mazog2:
 				c = "❌"
+			case mazogs.Treasure, mazogs.Treasure2:
+				c = "💰"
+			case mazogs.ThisWay:
+				c = "TW"
 			}
 			fmt.Printf("%s", c)
 		}
 		fmt.Printf("\n")
 	}
 }
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	m := mazogs.NewMaze()
-	m.Generate(100 * time.Millisecond)
-	count := m.CountEmpty()
+	m.AddTreasure()
+
+	count := func() int {
+		for {
+			timeout := 512 + rand.Intn(512)
+			m.Generate(time.Duration(timeout) * time.Millisecond)
+			// Fetch the number of empty locations. Continue if the maze is complex enough.
+			count := m.CountEmpty()
+			if count >= 1200 {
+				return count
+			}
+		}
+	}()
+
 	m.InsertEntrance()
 	m.Populate()
+	m.ChooseEntrance(1)
+	moves := m.Distance()
 	displayMap(m.Map())
-	fmt.Printf("count = %d\n", count)
+	fmt.Printf("count = %d, moves = %d\n", count, moves)
 }
