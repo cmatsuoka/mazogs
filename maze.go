@@ -1,59 +1,58 @@
 package mazogs
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 )
 
 const (
 	// Maze codes
-	empty                       byte = 0x00 // whitespace
-	externalWall                byte = 0x08 // checkerboard
-	deadEnd                     byte = 0x88 // inverse checkerboard
-	internalWall                byte = 0x7f // black block
-	trail                       byte = 0x1b // period
-	exit                        byte = 0x0d // dollar
-	thisWay                     byte = 0x17 // asterisk
-	playerStanding              byte = 0x1d // 1
-	playerRight                 byte = 0x1e // 2
-	playerRight2                byte = 0x9e // inverse 2
-	playerLeft                  byte = 0x1f // 3
-	playerLeft2                 byte = 0x9f // inverse 3
-	playerUpDown                byte = 0x20 // 4
-	playerUpDown2               byte = 0xa0 // inverse 4
-	playerHoldingTreasure       byte = 0x21 // 5
-	playerHoldingTreasureRight  byte = 0x22 // 6
-	playerHoldingTreasureRight2 byte = 0xa2 // inverse 6
-	playerHoldingTreasureLeft   byte = 0x23 // 7
-	playerHoldingTreasureLeft2  byte = 0xa3 // inverse 7
-	playerHoldingTreasureDown   byte = 0x24 // 8
-	playerHoldingTreasureDown2  byte = 0xa4 // inverse 8
-	playerHoldingTreasureUp     byte = 0x25 // 9
-	playerHoldingTreasureUp2    byte = 0xa5 // inverse 9
-	playerHoldingSword          byte = 0x26 // A
-	playerHoldingSwordRight     byte = 0x27 // B
-	playerHoldingSwordRight2    byte = 0xa7 // inverse B
-	playerHoldingSwordLeft      byte = 0x28 // C
-	playerHoldingSwordLeft2     byte = 0xa8 // inverse C
-	playerHoldingSwordUpDown    byte = 0x29 // D
-	playerHoldingSwordUpDown2   byte = 0xa9 // inverse D
-	mazogEyesOpen               byte = 0x3d // X
-	mazogEyesClosed             byte = 0xbd // inverse X
-	theTrasure                  byte = 0x39 // T
-	theTrasure2                 byte = 0xb9 // inverse T
-	prisonerEyesOpen            byte = 0x35 // P
-	prisonerEyesClosed          byte = 0xb5 // inverse P
-	sword                       byte = 0xb8 // inverse S
-	fighting1                   byte = 0x2b // F
-	fighting2                   byte = 0x2c // G
-	fighting3                   byte = 0x2d // H
+	Empty                       byte = 0x00 // whitespace
+	ExternalWall                byte = 0x08 // checkerboard
+	DeadEnd                     byte = 0x88 // inverse checkerboard
+	InternalWall                byte = 0x7f // black block
+	Trail                       byte = 0x1b // period
+	Exit                        byte = 0x0d // dollar
+	ThisWay                     byte = 0x17 // asterisk
+	PlayerStanding              byte = 0x1d // 1
+	PlayerRight                 byte = 0x1e // 2
+	PlayerRight2                byte = 0x9e // inverse 2
+	PlayerLeft                  byte = 0x1f // 3
+	PlayerLeft2                 byte = 0x9f // inverse 3
+	PlayerUpDown                byte = 0x20 // 4
+	PlayerUpDown2               byte = 0xa0 // inverse 4
+	PlayerHoldingTreasure       byte = 0x21 // 5
+	PlayerHoldingTreasureRight  byte = 0x22 // 6
+	PlayerHoldingTreasureRight2 byte = 0xa2 // inverse 6
+	PlayerHoldingTreasureLeft   byte = 0x23 // 7
+	PlayerHoldingTreasureLeft2  byte = 0xa3 // inverse 7
+	PlayerHoldingTreasureDown   byte = 0x24 // 8
+	PlayerHoldingTreasureDown2  byte = 0xa4 // inverse 8
+	PlayerHoldingTreasureUp     byte = 0x25 // 9
+	PlayerHoldingTreasureUp2    byte = 0xa5 // inverse 9
+	PlayerHoldingSword          byte = 0x26 // A
+	PlayerHoldingSwordRight     byte = 0x27 // B
+	PlayerHoldingSwordRight2    byte = 0xa7 // inverse B
+	PlayerHoldingSwordLeft      byte = 0x28 // C
+	PlayerHoldingSwordLeft2     byte = 0xa8 // inverse C
+	PlayerHoldingSwordUpDown    byte = 0x29 // D
+	PlayerHoldingSwordUpDown2   byte = 0xa9 // inverse D
+	MazogEyesOpen               byte = 0x3d // X
+	MazogEyesClosed             byte = 0xbd // inverse X
+	TheTrasure                  byte = 0x39 // T
+	TheTrasure2                 byte = 0xb9 // inverse T
+	PrisonerEyesOpen            byte = 0x35 // P
+	PrisonerEyesClosed          byte = 0xb5 // inverse P
+	Sword                       byte = 0xb8 // inverse S
+	Fighting1                   byte = 0x2b // F
+	Fighting2                   byte = 0x2c // G
+	Fighting3                   byte = 0x2d // H
 )
 
 const (
 	// maze dimensions
-	mazeRows    = 48
-	mazeColumns = 64
+	MazeRows    = 48
+	MazeColumns = 64
 
 	// indexes inside the maze
 	startPosition = 0x1d6
@@ -72,17 +71,17 @@ type Maze struct {
 }
 
 func NewMaze() *Maze {
-	area := make([]byte, mazeRows*mazeColumns)
+	area := make([]byte, MazeRows*MazeColumns)
 	for i := range area {
-		wall := internalWall
-		if i < mazeColumns || i > (mazeRows-1)*mazeColumns {
+		wall := InternalWall
+		if i < MazeColumns || i > (MazeRows-1)*MazeColumns {
 			// top and bottom rows
-			wall = externalWall
+			wall = ExternalWall
 		} else {
-			c := i % mazeColumns
-			if c == 0 || c == mazeColumns-1 {
+			c := i % MazeColumns
+			if c == 0 || c == MazeColumns-1 {
 				// left and right columns
-				wall = externalWall
+				wall = ExternalWall
 			}
 		}
 		area[i] = wall
@@ -91,6 +90,14 @@ func NewMaze() *Maze {
 		area:       area,
 		mazogTable: make([]int, 40),
 	}
+}
+
+func (m *Maze) SetPlayerPos(pos int) {
+	m.playerPos = pos
+}
+
+func (m *Maze) Map() []byte {
+	return m.area
 }
 
 // Generate generates the maze. The maze must already have been filled with internal walls,
@@ -161,9 +168,9 @@ func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool
 		}
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
-		pos = mazeColumns + rand.Intn(256)*11
+		pos = MazeColumns + rand.Intn(256)*11
 		for i := 0; i < 6; i++ {
-			if m.area[pos] == empty {
+			if m.area[pos] == Empty {
 				return pos, false
 			}
 			// The location is not empty, i.e. it contains an internal
@@ -179,97 +186,97 @@ func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool
 
 func (m *Maze) canGoLeft(pos *int) bool {
 	// Is there an internal wall to the left?
-	if m.area[*pos-1] != internalWall {
+	if m.area[*pos-1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall at the next left?
-	if m.area[*pos-2] != internalWall {
+	if m.area[*pos-2] != InternalWall {
 		return false
 	}
 	// Is there an internal wall left-below?
-	if m.area[*pos+mazeColumns-1] != internalWall {
+	if m.area[*pos+MazeColumns-1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall left-above?
-	if m.area[*pos-mazeColumns-1] != internalWall {
+	if m.area[*pos-MazeColumns-1] != InternalWall {
 		return false
 	}
 	// There is an internal wall above, below and the two positions to the left,
 	// i.e. progressing left will not touch another pathway.
 	*pos--
-	m.area[*pos] = empty
+	m.area[*pos] = Empty
 	return true
 }
 
 func (m *Maze) canGoRight(pos *int) bool {
 	// Is there an internal wall to the right?
-	if m.area[*pos+1] != internalWall {
+	if m.area[*pos+1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall at the next right?
-	if m.area[*pos+2] != internalWall {
+	if m.area[*pos+2] != InternalWall {
 		return false
 	}
 	// Is there an internal wall right-below?
-	if m.area[*pos+mazeColumns+1] != internalWall {
+	if m.area[*pos+MazeColumns+1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall right-above?
-	if m.area[*pos-mazeColumns+1] != internalWall {
+	if m.area[*pos-MazeColumns+1] != InternalWall {
 		return false
 	}
 	// There is an internal wall above, below and the two positions to the right,
 	// i.e. progressing right will not touch another pathway.
 	*pos++
-	m.area[*pos] = empty
+	m.area[*pos] = Empty
 	return true
 }
 
 func (m *Maze) canGoUp(pos *int) bool {
 	// Is there an internal wall to the left in the row above?
-	if m.area[*pos-mazeColumns-1] != internalWall {
+	if m.area[*pos-MazeColumns-1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall in the original column in the row above?
-	if m.area[*pos-mazeColumns] != internalWall {
+	if m.area[*pos-MazeColumns] != InternalWall {
 		return false
 	}
 	// Is there an internal wall to the right in the row above?
-	if m.area[*pos-mazeColumns+1] != internalWall {
+	if m.area[*pos-MazeColumns+1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall in the original column in the next row above?
-	if m.area[*pos-2*mazeColumns] != internalWall {
+	if m.area[*pos-2*MazeColumns] != InternalWall {
 		return false
 	}
 	// There is an internal wall above-left, above-right, immediately above for
 	// the next two rows.
-	*pos -= mazeColumns
-	m.area[*pos] = empty
+	*pos -= MazeColumns
+	m.area[*pos] = Empty
 	return true
 }
 
 func (m *Maze) canGoDown(pos *int) bool {
 	// Is there an internal wall to the left in the row below?
-	if m.area[*pos+mazeColumns-1] != internalWall {
+	if m.area[*pos+MazeColumns-1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall in the original column in the row below?
-	if m.area[*pos+mazeColumns] != internalWall {
+	if m.area[*pos+MazeColumns] != InternalWall {
 		return false
 	}
 	// Is there an internal wall to the right in the row below?
-	if m.area[*pos+mazeColumns+1] != internalWall {
+	if m.area[*pos+MazeColumns+1] != InternalWall {
 		return false
 	}
 	// Is there an internal wall in the original column in the next row below?
-	if m.area[*pos+2*mazeColumns] != internalWall {
+	if m.area[*pos+2*MazeColumns] != InternalWall {
 		return false
 	}
 	// There is an internal wall above-left, above-right, immediately above for
 	// the next two rows.
-	*pos += mazeColumns
-	m.area[*pos] = empty
+	*pos += MazeColumns
+	m.area[*pos] = Empty
 	return true
 }
 
@@ -279,14 +286,14 @@ func (m *Maze) canGoDown(pos *int) bool {
 // sword.
 func (m *Maze) InsertEntrance() {
 	p := entrancePos
-	m.area[p] = internalWall
+	m.area[p] = InternalWall
 	p++
-	m.area[p] = sword
-	p += 2*mazeColumns - 1
-	m.area[p] = internalWall
+	m.area[p] = Sword
+	p += 2*MazeColumns - 1
+	m.area[p] = InternalWall
 	p++
-	m.area[p] = internalWall
-	p -= mazeColumns
+	m.area[p] = InternalWall
+	p -= MazeColumns
 	startPos := p
 
 	// A passageway will be inserted between the left and right sides of the
@@ -296,25 +303,25 @@ func (m *Maze) InsertEntrance() {
 
 	// Create a passageway into the maze to the left.
 	for {
-		m.area[p] = empty
+		m.area[p] = Empty
 		p0 := p
 		p--
-		if m.area[p] == empty {
+		if m.area[p] == Empty {
 			break
 		}
 		// The position to the left is not empty.
-		p -= mazeColumns
-		if m.area[p] == empty {
+		p -= MazeColumns
+		if m.area[p] == Empty {
 			// Insert an empty location above to link up with the
 			// above-left empty location.
-			m.area[p+1] = empty
+			m.area[p+1] = Empty
 			break
 		}
-		p += mazeColumns
-		if m.area[p] == empty {
+		p += MazeColumns
+		if m.area[p] == Empty {
 			// Insert an empty location below to link up with the
 			// below-left empty location.
-			m.area[p+1] = empty
+			m.area[p+1] = Empty
 			break
 		}
 		p = p0 - 1
@@ -323,32 +330,32 @@ func (m *Maze) InsertEntrance() {
 	p = startPos
 	// Create a passageway into the maze to the right.
 	for {
-		m.area[p] = empty
+		m.area[p] = Empty
 		p0 := p
 		p++
-		if m.area[p] == empty {
+		if m.area[p] == Empty {
 			break
 		}
 		// The position to the right is not empty.
-		p -= mazeColumns
-		if m.area[p] == empty {
-			if m.area[p] == empty {
+		p -= MazeColumns
+		if m.area[p] == Empty {
+			if m.area[p] == Empty {
 				// Insert an empty location above to link up with the
 				// above-left empty location.
-				m.area[p-1] = empty
+				m.area[p-1] = Empty
 				break
 			}
-			p += mazeColumns
-			if m.area[p] == empty {
+			p += MazeColumns
+			if m.area[p] == Empty {
 				// Insert an empty location below to link up with the
 				// below-left empty location.
-				m.area[p-1] = empty
+				m.area[p-1] = Empty
 				break
 			}
 		}
 		p = p0 + 1
 	}
-	m.area[startPos] = playerStanding
+	m.area[startPos] = PlayerStanding
 	m.playerPos = startPos
 }
 
@@ -359,13 +366,13 @@ func (m *Maze) Populate() {
 	// Insert swords at random locations within the maze.
 	for i := 0; i < numSwords; i++ {
 		p := m.randomInternalWallPos()
-		m.area[p] = sword
+		m.area[p] = Sword
 	}
 
 	// Insert prisoners at random locations within the maze.
 	for i := 0; i < numPrisoners; i++ {
 		p := m.randomInternalWallPos()
-		m.area[p] = prisonerEyesOpen
+		m.area[p] = PrisonerEyesOpen
 	}
 
 	// Determine random locations within the maze for the mazogs. The addresses
@@ -378,7 +385,7 @@ func (m *Maze) Populate() {
 		p := func() int {
 			for {
 				p := randomMazePos()
-				if m.area[p] == empty && m.area[p] != externalWall && m.area[p+1] != externalWall {
+				if m.area[p] == Empty && m.area[p] != ExternalWall && m.area[p+1] != ExternalWall {
 					return p
 				}
 			}
@@ -402,10 +409,10 @@ func (m *Maze) insertMazogs() {
 			// Mazog has been killed.
 			continue
 		}
-		if m.area[mp] == mazogEyesClosed {
-			m.area[mp] = mazogEyesOpen
+		if m.area[mp] == MazogEyesClosed {
+			m.area[mp] = MazogEyesOpen
 		} else {
-			m.area[mp] = mazogEyesClosed
+			m.area[mp] = MazogEyesClosed
 		}
 	}
 }
@@ -416,7 +423,7 @@ func (m *Maze) insertMazogs() {
 func (m *Maze) randomInternalWallPos() int {
 	for {
 		p := randomMazePos()
-		if m.area[p] == internalWall && m.area[p-1] != externalWall && m.area[p+1] != externalWall {
+		if m.area[p] == InternalWall && m.area[p-1] != ExternalWall && m.area[p+1] != ExternalWall {
 			return p
 		}
 	}
@@ -436,29 +443,5 @@ func (m *Maze) randomInternalWallPos() int {
 //   0   x 11 = 0               => (0, 0)
 //   255 x 11 = 2805 = 43 re 53 => (45, 53)
 func randomMazePos() int {
-	return rand.Intn(256)*11 + 2*mazeColumns
-}
-
-func (m *Maze) Display() {
-	for i := 0; i < mazeRows; i++ {
-		for j := 0; j < mazeColumns; j++ {
-			c := "  "
-			switch m.area[i*mazeColumns+j] {
-			case internalWall:
-				c = "██"
-			case externalWall:
-				c = "▒▒"
-			case sword:
-				c = "🗡️ "
-			case playerStanding:
-				c = "🧍"
-			case prisonerEyesOpen, prisonerEyesClosed:
-				c = "😬"
-			case mazogEyesOpen, mazogEyesClosed:
-				c = "❌"
-			}
-			fmt.Printf("%s", c)
-		}
-		fmt.Printf("\n")
-	}
+	return rand.Intn(256)*11 + 2*MazeColumns
 }
