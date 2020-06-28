@@ -21,9 +21,9 @@ func displayMap(themap []byte) {
 				c = "🗡️ "
 			case mazogs.PlayerStanding:
 				c = "🧍"
-			case mazogs.PrisonerEyesOpen, mazogs.PrisonerEyesClosed:
+			case mazogs.Prisoner, mazogs.Prisoner2:
 				c = "😬"
-			case mazogs.MazogEyesOpen, mazogs.MazogEyesClosed:
+			case mazogs.Mazog, mazogs.Mazog2:
 				c = "❌"
 			}
 			fmt.Printf("%s", c)

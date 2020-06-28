@@ -7,46 +7,46 @@ import (
 
 const (
 	// Maze codes
-	Empty                       byte = 0x00 // whitespace
-	ExternalWall                byte = 0x08 // checkerboard
-	DeadEnd                     byte = 0x88 // inverse checkerboard
-	InternalWall                byte = 0x7f // black block
-	Trail                       byte = 0x1b // period
-	Exit                        byte = 0x0d // dollar
-	ThisWay                     byte = 0x17 // asterisk
-	PlayerStanding              byte = 0x1d // 1
-	PlayerRight                 byte = 0x1e // 2
-	PlayerRight2                byte = 0x9e // inverse 2
-	PlayerLeft                  byte = 0x1f // 3
-	PlayerLeft2                 byte = 0x9f // inverse 3
-	PlayerUpDown                byte = 0x20 // 4
-	PlayerUpDown2               byte = 0xa0 // inverse 4
-	PlayerHoldingTreasure       byte = 0x21 // 5
-	PlayerHoldingTreasureRight  byte = 0x22 // 6
-	PlayerHoldingTreasureRight2 byte = 0xa2 // inverse 6
-	PlayerHoldingTreasureLeft   byte = 0x23 // 7
-	PlayerHoldingTreasureLeft2  byte = 0xa3 // inverse 7
-	PlayerHoldingTreasureDown   byte = 0x24 // 8
-	PlayerHoldingTreasureDown2  byte = 0xa4 // inverse 8
-	PlayerHoldingTreasureUp     byte = 0x25 // 9
-	PlayerHoldingTreasureUp2    byte = 0xa5 // inverse 9
-	PlayerHoldingSword          byte = 0x26 // A
-	PlayerHoldingSwordRight     byte = 0x27 // B
-	PlayerHoldingSwordRight2    byte = 0xa7 // inverse B
-	PlayerHoldingSwordLeft      byte = 0x28 // C
-	PlayerHoldingSwordLeft2     byte = 0xa8 // inverse C
-	PlayerHoldingSwordUpDown    byte = 0x29 // D
-	PlayerHoldingSwordUpDown2   byte = 0xa9 // inverse D
-	MazogEyesOpen               byte = 0x3d // X
-	MazogEyesClosed             byte = 0xbd // inverse X
-	Treasure                    byte = 0x39 // T
-	Treasure2                   byte = 0xb9 // inverse T
-	PrisonerEyesOpen            byte = 0x35 // P
-	PrisonerEyesClosed          byte = 0xb5 // inverse P
-	Sword                       byte = 0xb8 // inverse S
-	Fighting1                   byte = 0x2b // F
-	Fighting2                   byte = 0x2c // G
-	Fighting3                   byte = 0x2d // H
+	Empty                    byte = 0x00 // whitespace
+	ExternalWall             byte = 0x08 // checkerboard
+	DeadEnd                  byte = 0x88 // inverse checkerboard
+	InternalWall             byte = 0x7f // black block
+	Trail                    byte = 0x1b // period
+	Exit                     byte = 0x0d // dollar
+	ThisWay                  byte = 0x17 // asterisk
+	PlayerStanding           byte = 0x1d // 1
+	PlayerRight              byte = 0x1e // 2
+	PlayerRight2             byte = 0x9e // inverse 2
+	PlayerLeft               byte = 0x1f // 3
+	PlayerLeft2              byte = 0x9f // inverse 3
+	PlayerUpDown             byte = 0x20 // 4
+	PlayerUpDown2            byte = 0xa0 // inverse 4
+	PlayerWithTreasure       byte = 0x21 // 5
+	PlayerWithTreasureRight  byte = 0x22 // 6
+	PlayerWithTreasureRight2 byte = 0xa2 // inverse 6
+	PlayerWithTreasureLeft   byte = 0x23 // 7
+	PlayerWithTreasureLeft2  byte = 0xa3 // inverse 7
+	PlayerWithTreasureDown   byte = 0x24 // 8
+	PlayerWithTreasureDown2  byte = 0xa4 // inverse 8
+	PlayerWithTreasureUp     byte = 0x25 // 9
+	PlayerWithTreasureUp2    byte = 0xa5 // inverse 9
+	PlayerWithSword          byte = 0x26 // A
+	PlayerWithSwordRight     byte = 0x27 // B
+	PlayerWithSwordRight2    byte = 0xa7 // inverse B
+	PlayerWithSwordLeft      byte = 0x28 // C
+	PlayerWithSwordLeft2     byte = 0xa8 // inverse C
+	PlayerWithSwordUpDown    byte = 0x29 // D
+	PlayerWithSwordUpDown2   byte = 0xa9 // inverse D
+	Mazog                    byte = 0x3d // X
+	Mazog2                   byte = 0xbd // inverse X
+	Treasure                 byte = 0x39 // T
+	Treasure2                byte = 0xb9 // inverse T
+	Prisoner                 byte = 0x35 // P
+	Prisoner2                byte = 0xb5 // inverse P
+	Sword                    byte = 0xb8 // inverse S
+	Fighting1                byte = 0x2b // F
+	Fighting2                byte = 0x2c // G
+	Fighting3                byte = 0x2d // H
 )
 
 const (
@@ -297,7 +297,7 @@ func countCode(m *Maze, what byte) (count int) {
 func (m *Maze) Clear() {
 	for i, code := range m.area {
 		switch code {
-		case Trail, ThisWay, MazogEyesOpen, MazogEyesClosed:
+		case Trail, ThisWay, Mazog, Mazog2:
 			m.area[i] = Empty
 		}
 	}
@@ -446,6 +446,14 @@ func (m *Maze) InsertEntrance() {
 	m.PlayerPos = startPos
 }
 
+// Animate updates the animation for prisoners, treasure and mazog.
+func (m *Maze) Animate(p int) {
+	switch m.area[p] {
+	case Prisoner, Prisoner2, Treasure, Treasure2, Mazog, Mazog2:
+		m.area[p] += 0x80
+	}
+}
+
 // Populate inserts mazogs, swords and prisoners randomly within the maze. Mazogs can
 // only be placed at empty locations. Swords and prisoners can only be placed where
 // there is an internal wall. No items are placed next to an external wall.
@@ -459,7 +467,7 @@ func (m *Maze) Populate() {
 	// Insert prisoners at random locations within the maze.
 	for i := 0; i < numPrisoners; i++ {
 		p := m.randomInternalWallPos()
-		m.area[p] = PrisonerEyesOpen
+		m.area[p] = Prisoner
 	}
 
 	// Determine random locations within the maze for the mazogs. The addresses
@@ -496,10 +504,10 @@ func (m *Maze) insertMazogs() {
 			// Mazog has been killed.
 			continue
 		}
-		if m.area[mp] == MazogEyesClosed {
-			m.area[mp] = MazogEyesOpen
+		if m.area[mp] == Mazog2 {
+			m.area[mp] = Mazog
 		} else {
-			m.area[mp] = MazogEyesClosed
+			m.area[mp] = Mazog2
 		}
 	}
 }
