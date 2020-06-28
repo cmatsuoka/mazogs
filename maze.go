@@ -7,15 +7,47 @@ import (
 )
 
 const (
-	space = byte(iota)
-	internalWall
-	externalWall
-	sword
-	thePlayer
-	prisonerEyesOpen
-	prisonerEyesClosed
-	mazogEyesOpen
-	mazogEyesClosed
+	// Maze codes
+	empty                       byte = 0x00 // whitespace
+	externalWall                byte = 0x08 // checkerboard
+	deadEnd                     byte = 0x88 // inverse checkerboard
+	internalWall                byte = 0x7f // black block
+	trail                       byte = 0x1b // period
+	exit                        byte = 0x0d // dollar
+	thisWay                     byte = 0x17 // asterisk
+	playerStanding              byte = 0x1d // 1
+	playerRight                 byte = 0x1e // 2
+	playerRight2                byte = 0x9e // inverse 2
+	playerLeft                  byte = 0x1f // 3
+	playerLeft2                 byte = 0x9f // inverse 3
+	playerUpDown                byte = 0x20 // 4
+	playerUpDown2               byte = 0xa0 // inverse 4
+	playerHoldingTreasure       byte = 0x21 // 5
+	playerHoldingTreasureRight  byte = 0x22 // 6
+	playerHoldingTreasureRight2 byte = 0xa2 // inverse 6
+	playerHoldingTreasureLeft   byte = 0x23 // 7
+	playerHoldingTreasureLeft2  byte = 0xa3 // inverse 7
+	playerHoldingTreasureDown   byte = 0x24 // 8
+	playerHoldingTreasureDown2  byte = 0xa4 // inverse 8
+	playerHoldingTreasureUp     byte = 0x25 // 9
+	playerHoldingTreasureUp2    byte = 0xa5 // inverse 9
+	playerHoldingSword          byte = 0x26 // A
+	playerHoldingSwordRight     byte = 0x27 // B
+	playerHoldingSwordRight2    byte = 0xa7 // inverse B
+	playerHoldingSwordLeft      byte = 0x28 // C
+	playerHoldingSwordLeft2     byte = 0xa8 // inverse C
+	playerHoldingSwordUpDown    byte = 0x29 // D
+	playerHoldingSwordUpDown2   byte = 0xa9 // inverse D
+	mazogEyesOpen               byte = 0x3d // X
+	mazogEyesClosed             byte = 0xbd // inverse X
+	theTrasure                  byte = 0x39 // T
+	theTrasure2                 byte = 0xb9 // inverse T
+	prisonerEyesOpen            byte = 0x35 // P
+	prisonerEyesClosed          byte = 0xb5 // inverse P
+	sword                       byte = 0xb8 // inverse S
+	fighting1                   byte = 0x2b // F
+	fighting2                   byte = 0x2c // G
+	fighting3                   byte = 0x2d // H
 )
 
 const (
@@ -131,7 +163,7 @@ func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool
 		// random position as the start of the next path.
 		pos = mazeColumns + rand.Intn(256)*11
 		for i := 0; i < 6; i++ {
-			if m.area[pos] == space {
+			if m.area[pos] == empty {
 				return pos, false
 			}
 			// The location is not empty, i.e. it contains an internal
@@ -165,7 +197,7 @@ func (m *Maze) canGoLeft(pos *int) bool {
 	// There is an internal wall above, below and the two positions to the left,
 	// i.e. progressing left will not touch another pathway.
 	*pos--
-	m.area[*pos] = space
+	m.area[*pos] = empty
 	return true
 }
 
@@ -189,7 +221,7 @@ func (m *Maze) canGoRight(pos *int) bool {
 	// There is an internal wall above, below and the two positions to the right,
 	// i.e. progressing right will not touch another pathway.
 	*pos++
-	m.area[*pos] = space
+	m.area[*pos] = empty
 	return true
 }
 
@@ -213,7 +245,7 @@ func (m *Maze) canGoUp(pos *int) bool {
 	// There is an internal wall above-left, above-right, immediately above for
 	// the next two rows.
 	*pos -= mazeColumns
-	m.area[*pos] = space
+	m.area[*pos] = empty
 	return true
 }
 
@@ -237,7 +269,7 @@ func (m *Maze) canGoDown(pos *int) bool {
 	// There is an internal wall above-left, above-right, immediately above for
 	// the next two rows.
 	*pos += mazeColumns
-	m.area[*pos] = space
+	m.area[*pos] = empty
 	return true
 }
 
@@ -264,25 +296,25 @@ func (m *Maze) InsertEntrance() {
 
 	// Create a passageway into the maze to the left.
 	for {
-		m.area[p] = space
+		m.area[p] = empty
 		p0 := p
 		p--
-		if m.area[p] == space {
+		if m.area[p] == empty {
 			break
 		}
 		// The position to the left is not empty.
 		p -= mazeColumns
-		if m.area[p] == space {
+		if m.area[p] == empty {
 			// Insert an empty location above to link up with the
 			// above-left empty location.
-			m.area[p+1] = space
+			m.area[p+1] = empty
 			break
 		}
 		p += mazeColumns
-		if m.area[p] == space {
+		if m.area[p] == empty {
 			// Insert an empty location below to link up with the
 			// below-left empty location.
-			m.area[p+1] = space
+			m.area[p+1] = empty
 			break
 		}
 		p = p0 - 1
@@ -291,32 +323,32 @@ func (m *Maze) InsertEntrance() {
 	p = startPos
 	// Create a passageway into the maze to the right.
 	for {
-		m.area[p] = space
+		m.area[p] = empty
 		p0 := p
 		p++
-		if m.area[p] == space {
+		if m.area[p] == empty {
 			break
 		}
 		// The position to the right is not empty.
 		p -= mazeColumns
-		if m.area[p] == space {
-			if m.area[p] == space {
+		if m.area[p] == empty {
+			if m.area[p] == empty {
 				// Insert an empty location above to link up with the
 				// above-left empty location.
-				m.area[p-1] = space
+				m.area[p-1] = empty
 				break
 			}
 			p += mazeColumns
-			if m.area[p] == space {
+			if m.area[p] == empty {
 				// Insert an empty location below to link up with the
 				// below-left empty location.
-				m.area[p-1] = space
+				m.area[p-1] = empty
 				break
 			}
 		}
 		p = p0 + 1
 	}
-	m.area[startPos] = thePlayer
+	m.area[startPos] = playerStanding
 	m.playerPos = startPos
 }
 
@@ -346,7 +378,7 @@ func (m *Maze) Populate() {
 		p := func() int {
 			for {
 				p := randomMazePos()
-				if m.area[p] == space && m.area[p] != externalWall && m.area[p+1] != externalWall {
+				if m.area[p] == empty && m.area[p] != externalWall && m.area[p+1] != externalWall {
 					return p
 				}
 			}
@@ -418,7 +450,7 @@ func (m *Maze) Display() {
 				c = "▒▒"
 			case sword:
 				c = "🗡️ "
-			case thePlayer:
+			case playerStanding:
 				c = "🧍"
 			case prisonerEyesOpen, prisonerEyesClosed:
 				c = "😬"
