@@ -32,11 +32,12 @@ func displayMap(themap []byte) {
 	}
 }
 func main() {
-	fmt.Println("mazogs")
 	rand.Seed(time.Now().UnixNano())
 	m := mazogs.NewMaze()
 	m.Generate(100 * time.Millisecond)
+	count := m.CountEmpty()
 	m.InsertEntrance()
 	m.Populate()
 	displayMap(m.Map())
+	fmt.Printf("count = %d\n", count)
 }

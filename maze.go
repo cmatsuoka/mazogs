@@ -39,8 +39,8 @@ const (
 	PlayerHoldingSwordUpDown2   byte = 0xa9 // inverse D
 	MazogEyesOpen               byte = 0x3d // X
 	MazogEyesClosed             byte = 0xbd // inverse X
-	TheTrasure                  byte = 0x39 // T
-	TheTrasure2                 byte = 0xb9 // inverse T
+	Treasure                    byte = 0x39 // T
+	Treasure2                   byte = 0xb9 // inverse T
 	PrisonerEyesOpen            byte = 0x35 // P
 	PrisonerEyesClosed          byte = 0xb5 // inverse P
 	Sword                       byte = 0xb8 // inverse S
@@ -64,9 +64,9 @@ const (
 )
 
 type Maze struct {
+	PlayerPos  int
 	area       []byte
 	genTime    time.Time
-	playerPos  int
 	mazogTable []int
 }
 
@@ -92,10 +92,6 @@ func NewMaze() *Maze {
 	}
 }
 
-func (m *Maze) SetPlayerPos(pos int) {
-	m.playerPos = pos
-}
-
 func (m *Maze) Map() []byte {
 	return m.area
 }
@@ -113,7 +109,6 @@ func (m *Maze) Map() []byte {
 // will be progressed in the selected direction unless it would cause it to intersect with
 // an existing path. The routine will continue to attempt to route paths until a timeout
 // expires.
-
 func (m *Maze) Generate(genTimeout time.Duration) {
 	m.genTime = time.Now()
 	pos := startPosition
@@ -122,46 +117,46 @@ func (m *Maze) Generate(genTimeout time.Duration) {
 		direction := rand.Intn(4)
 		switch direction {
 		case 0:
-			if m.canGoLeft(&pos) {
+			if canGoLeft(m, &pos) {
 				continue
 			}
 			fallthrough
 		case 1:
-			if m.canGoRight(&pos) {
+			if canGoRight(m, &pos) {
 				continue
 			}
 			fallthrough
 		case 2:
-			if m.canGoUp(&pos) {
+			if canGoUp(m, &pos) {
 				continue
 			}
 			fallthrough
 		case 3:
-			if m.canGoDown(&pos) {
+			if canGoDown(m, &pos) {
 				continue
 			}
 		}
-		if m.canGoLeft(&pos) {
+		if canGoLeft(m, &pos) {
 			continue
 		}
-		if m.canGoRight(&pos) {
+		if canGoRight(m, &pos) {
 			continue
 		}
-		if m.canGoUp(&pos) {
+		if canGoUp(m, &pos) {
 			continue
 		}
 
 		// This point is reached when it is no longer possible to progress the path
 		// in any direction, select a random location for the start of a new path.
 		var timeout bool
-		pos, timeout = m.newStartPosition(genTimeout)
+		pos, timeout = newStartPosition(m, genTimeout)
 		if timeout {
 			break
 		}
 	}
 }
 
-func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool) {
+func newStartPosition(m *Maze, genTimeout time.Duration) (pos int, timeout bool) {
 	for {
 		if time.Since(m.genTime) > genTimeout {
 			return 0, true
@@ -184,7 +179,7 @@ func (m *Maze) newStartPosition(genTimeout time.Duration) (pos int, timeout bool
 	}
 }
 
-func (m *Maze) canGoLeft(pos *int) bool {
+func canGoLeft(m *Maze, pos *int) bool {
 	// Is there an internal wall to the left?
 	if m.area[*pos-1] != InternalWall {
 		return false
@@ -208,7 +203,7 @@ func (m *Maze) canGoLeft(pos *int) bool {
 	return true
 }
 
-func (m *Maze) canGoRight(pos *int) bool {
+func canGoRight(m *Maze, pos *int) bool {
 	// Is there an internal wall to the right?
 	if m.area[*pos+1] != InternalWall {
 		return false
@@ -232,7 +227,7 @@ func (m *Maze) canGoRight(pos *int) bool {
 	return true
 }
 
-func (m *Maze) canGoUp(pos *int) bool {
+func canGoUp(m *Maze, pos *int) bool {
 	// Is there an internal wall to the left in the row above?
 	if m.area[*pos-MazeColumns-1] != InternalWall {
 		return false
@@ -256,7 +251,7 @@ func (m *Maze) canGoUp(pos *int) bool {
 	return true
 }
 
-func (m *Maze) canGoDown(pos *int) bool {
+func canGoDown(m *Maze, pos *int) bool {
 	// Is there an internal wall to the left in the row below?
 	if m.area[*pos+MazeColumns-1] != InternalWall {
 		return false
@@ -278,6 +273,99 @@ func (m *Maze) canGoDown(pos *int) bool {
 	*pos += MazeColumns
 	m.area[*pos] = Empty
 	return true
+}
+
+func (m *Maze) CountEmpty() int {
+	return countCode(m, Empty)
+}
+
+// countCode determines how many locations there are in the maze with the specified
+// code, to check whether there are a sufficient number of movement possibilities.
+// The routine is also used to calculate the number of locations to reach the treasure
+// or exit. In this case the route is first populated with 'This Way' codes and then
+// this function is used to count how many 'This Way' codes there are.
+func countCode(m *Maze, what byte) (count int) {
+	for _, code := range m.area {
+		if code == what {
+			count++
+		}
+	}
+	return count
+}
+
+// Clear clears the maze of mazogs, trails, and 'This Way's
+func (m *Maze) Clear() {
+	for i, code := range m.area {
+		switch code {
+		case Trail, ThisWay, MazogEyesOpen, MazogEyesClosed:
+			m.area[i] = Empty
+		}
+	}
+}
+
+// TraceRoute cleverly determines the route to the treasure, or if the player has
+// already collected the treasure then it will determine the route to the exit. It
+// first searches around the player's location for the treasure #1 maze code. If this
+// is not found then it searches for treasure #2 maze code. If this is not found then
+// it searches for the exit maze code (which will only ever be in the maze once the
+// player has collected the treasure). If the exit is not found then it searches for
+// an empty location. If an empty location is found then it is replaced with 'This Way'.
+// The search is now repeated from this new location. As each empty location is found
+// it is replaced with 'This Way'. This continues until either the treasure / exit is
+// found or there is no empty location found, i.e. a dead end was reached. When a dead
+// end is reached, a search is now made for 'This Way' and replaced with a special
+// 'Dead End' maze code. If an empty location is found adjacent to the 'Dead End' location
+// then it is explored. If an empty location is not found then there must be another
+// 'This Way' that lead to this location originally and so it is now replaced with 'Dead
+// End'. The net result is that all dead ends are back-tracked and labelled as dead ends.
+// This leaves only those 'This Way' codes that form part of the actual route to the
+// treasure or exit (as appropriate). Once the route to the treasure / exit has been
+// established, all 'Dead End' codes are replaced as empty locations to leave just the
+// route through the maze in place.
+func (m *Maze) TraceRoute() {
+	p := m.PlayerPos
+	for _, what := range []byte{Treasure, Treasure2, Exit, Empty, ThisWay} {
+		newPos, found := checkSurroundings(m, p, what)
+		if found {
+			p = newPos
+			switch what {
+			case Treasure, Treasure2, Exit:
+				break
+			case Empty:
+				// An empty location was found to the left, right, above or below.
+				m.area[p] = ThisWay
+			case ThisWay:
+				// 'This Way' was found to the left, right, above or below. The
+				// search will always favour an empty location and so if an empty
+				// location was not found but a 'This Way' was found then it means
+				// that a dead end was reached. The search is then back-tracked
+				// along the route that was previously followed. The location is
+				// marked as a dead end, which eventually will leave only those
+				// 'This Way' entries that form part of the route.
+				m.area[p] = DeadEnd
+			}
+		}
+	}
+	// Reached the treasure #1, treasure #2 or exit. The exit will only be in the maze after
+	// the player has collected the treasure and so will not be found when searching for
+	// the treasure.
+	m.area[p] = ThisWay
+	// Now remove all dead end markers and replace with empty locations. This will leave
+	// 'This Way' markers along the route to the treasure or exit.
+	for i, code := range m.area {
+		if code == DeadEnd {
+			m.area[i] = Empty
+		}
+	}
+}
+
+func checkSurroundings(m *Maze, p int, what byte) (newPos int, found bool) {
+	for newPos := range []int{p - 1, p + 1, p - MazeColumns, p + MazeColumns} {
+		if m.area[newPos] == what {
+			return newPos, true
+		}
+	}
+	return p, false
 }
 
 // InsertEntrance creates the entrance passageways. The entrance/exit is located at
@@ -355,8 +443,7 @@ func (m *Maze) InsertEntrance() {
 		}
 		p = p0 + 1
 	}
-	m.area[startPos] = PlayerStanding
-	m.playerPos = startPos
+	m.PlayerPos = startPos
 }
 
 // Populate inserts mazogs, swords and prisoners randomly within the maze. Mazogs can
