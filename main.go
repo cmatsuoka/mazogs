@@ -5,33 +5,33 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/cmatsuoka/mazogs"
+	"github.com/cmatsuoka/mazogs/maze"
 )
 
 func displayMap(themap []byte) {
-	for i := 0; i < mazogs.MazeRows; i++ {
-		for j := 0; j < mazogs.MazeColumns; j++ {
+	for i := 0; i < maze.MazeRows; i++ {
+		for j := 0; j < maze.MazeColumns; j++ {
 			c := "  "
-			switch themap[i*mazogs.MazeColumns+j] {
-			case mazogs.InternalWall:
+			switch themap[i*maze.MazeColumns+j] {
+			case maze.InternalWall:
 				c = "██"
-			case mazogs.ExternalWall:
+			case maze.ExternalWall:
 				c = "▒▒"
-			case mazogs.Sword:
+			case maze.Sword:
 				c = "🗡️ "
-			case mazogs.PlayerStanding:
+			case maze.PlayerStanding:
 				c = "🧍"
-			case mazogs.Prisoner, mazogs.Prisoner2:
+			case maze.Prisoner, maze.Prisoner2:
 				c = "😬"
-			case mazogs.Mazog, mazogs.Mazog2:
+			case maze.Mazog, maze.Mazog2:
 				c = "❌"
-			case mazogs.Treasure, mazogs.Treasure2:
+			case maze.Treasure, maze.Treasure2:
 				c = "💰"
-			case mazogs.ThisWay:
+			case maze.ThisWay:
 				c = "**"
-			case mazogs.DeadEnd:
+			case maze.DeadEnd:
 				c = "xx"
-			case mazogs.Exit:
+			case maze.Exit:
 				c = ">>"
 			}
 			fmt.Printf("%s", c)
@@ -43,7 +43,8 @@ func displayMap(themap []byte) {
 func main() {
 	seed := time.Now().UnixNano()
 	rand.Seed(seed)
-	m := mazogs.NewMaze()
+
+	m := maze.New()
 
 	count := func() int {
 		var count int

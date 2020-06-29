@@ -1,4 +1,4 @@
-package mazogs
+package graphics
 
 var sprites = map[byte][]byte{
 

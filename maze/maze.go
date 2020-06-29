@@ -1,4 +1,4 @@
-package mazogs
+package maze
 
 import (
 	"math/rand"
@@ -73,7 +73,7 @@ type Maze struct {
 	codeAtPlayerPos byte
 }
 
-func NewMaze() *Maze {
+func New() *Maze {
 	return &Maze{
 		area:       make([]byte, MazeRows*MazeColumns),
 		mazogTable: make([]int, 40),
