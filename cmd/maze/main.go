@@ -41,13 +41,13 @@ func displayMap(themap []byte) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	seed := time.Now().UnixNano()
+	rand.Seed(seed)
 	m := mazogs.NewMaze()
-	m.AddTreasure()
 
 	count := func() int {
 		var count int
-		for i := 0; i < 5; i++ {
+		for i := 0; i < 10; i++ {
 			timeout := 512 + rand.Intn(512)
 			m.Generate(time.Duration(timeout) * time.Millisecond)
 			// Fetch the number of empty locations. Continue if the maze is complex enough.
@@ -63,7 +63,19 @@ func main() {
 	m.InsertEntrance()
 	m.Populate()
 	m.ChooseEntrance(1)
-	moves := m.Distance()
+
+	var moves int
+	for {
+		moves = m.Distance()
+		if moves > 120 {
+			// The treasure is sufficiently far away.
+			break
+		}
+
+		// The treasure is not far enough away.
+		fmt.Printf("Treasure is too close (%d moves), relocating...\n", moves)
+		m.RelocateTreasure()
+	}
 	displayMap(m.Map())
 	fmt.Printf("count = %d, moves = %d\n", count, moves)
 }

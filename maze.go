@@ -65,7 +65,8 @@ const (
 
 type Maze struct {
 	PlayerPos       int
-	ExitPos         int
+	exitPos         int
+	treasurePos     int
 	area            []byte
 	genTime         time.Time
 	mazogTable      []int
@@ -73,23 +74,8 @@ type Maze struct {
 }
 
 func NewMaze() *Maze {
-	area := make([]byte, MazeRows*MazeColumns)
-	for i := range area {
-		wall := InternalWall
-		if i < MazeColumns || i > (MazeRows-1)*MazeColumns {
-			// top and bottom rows
-			wall = ExternalWall
-		} else {
-			c := i % MazeColumns
-			if c == 0 || c == MazeColumns-1 {
-				// left and right columns
-				wall = ExternalWall
-			}
-		}
-		area[i] = wall
-	}
 	return &Maze{
-		area:       area,
+		area:       make([]byte, MazeRows*MazeColumns),
 		mazogTable: make([]int, 40),
 	}
 }
@@ -112,6 +98,25 @@ func (m *Maze) Map() []byte {
 // an existing path. The routine will continue to attempt to route paths until a timeout
 // expires.
 func (m *Maze) Generate(genTimeout time.Duration) {
+	// Construct the maze area, setting the border around it and filling all internal
+	// locations with wall maze codes.
+	for i := range m.area {
+		wall := InternalWall
+		if i < MazeColumns || i > (MazeRows-1)*MazeColumns {
+			// top and bottom rows
+			wall = ExternalWall
+		} else {
+			c := i % MazeColumns
+			if c == 0 || c == MazeColumns-1 {
+				// left and right columns
+				wall = ExternalWall
+			}
+		}
+		m.area[i] = wall
+	}
+
+	addTreasure(m)
+
 	m.genTime = time.Now()
 	pos := m.PlayerPos
 
@@ -427,13 +432,15 @@ func (m *Maze) InsertEntrance() {
 			m.area[p+1] = Empty
 			break
 		}
-		p += MazeColumns
+		// The position above-left is not empty.
+		p += 2 * MazeColumns
 		if m.area[p] == Empty {
 			// Insert an empty location below to link up with the
 			// below-left empty location.
 			m.area[p+1] = Empty
 			break
 		}
+		// The position below-left is not empty.
 		p = p0 - 1
 	}
 
@@ -449,20 +456,20 @@ func (m *Maze) InsertEntrance() {
 		// The position to the right is not empty.
 		p -= MazeColumns
 		if m.area[p] == Empty {
-			if m.area[p] == Empty {
-				// Insert an empty location above to link up with the
-				// above-left empty location.
-				m.area[p-1] = Empty
-				break
-			}
-			p += MazeColumns
-			if m.area[p] == Empty {
-				// Insert an empty location below to link up with the
-				// below-left empty location.
-				m.area[p-1] = Empty
-				break
-			}
+			// Insert an empty location above to link up with the
+			// above-left empty location.
+			m.area[p-1] = Empty
+			break
 		}
+		// The position above-right is not empty.
+		p += 2 * MazeColumns
+		if m.area[p] == Empty {
+			// Insert an empty location below to link up with the
+			// below-left empty location.
+			m.area[p-1] = Empty
+			break
+		}
+		// The position below-right is not empty.
 		p = p0 + 1
 	}
 	m.PlayerPos = startPos
@@ -476,7 +483,7 @@ func (m *Maze) Animate(p int) {
 	}
 }
 
-func (m *Maze) AddTreasure() int {
+func addTreasure(m *Maze) int {
 	for {
 		// Select a random location between row 2 column 0 and row 45 column 58.
 		p := 2*MazeColumns + rand.Intn(44*MazeColumns-6)
@@ -485,14 +492,28 @@ func (m *Maze) AddTreasure() int {
 			m.PlayerPos = p
 			// Insert the treasure ['T'] into the maze.
 			m.area[p] = Treasure
+			m.treasurePos = p
 			return p
+		}
+	}
+}
+
+func (m *Maze) RelocateTreasure() {
+	m.area[m.treasurePos] = Empty
+	for {
+		// Select a random location between row 2 column 0 and row 45 column 58.
+		p := 2*MazeColumns + rand.Intn(44*MazeColumns-6)
+		if m.area[p] == Empty {
+			m.treasurePos = p
+			m.area[p] = Treasure
+			break
 		}
 	}
 }
 
 func (m *Maze) ChooseEntrance(dir int) {
 	p := m.PlayerPos
-	m.ExitPos = p
+	m.exitPos = p
 	if dir > 0 {
 		// Enter maze from the right
 		m.area[p-1] = InternalWall
@@ -506,7 +527,7 @@ func (m *Maze) Distance() int {
 	clearMaze(m)
 	m.TraceRoute()
 	moves := countCode(m, ThisWay)
-	//clearMaze(m)
+	clearMaze(m)
 	return moves
 }
 
