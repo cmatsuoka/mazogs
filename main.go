@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/cmatsuoka/mazogs/game"
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
@@ -44,39 +45,9 @@ func main() {
 	seed := time.Now().UnixNano()
 	rand.Seed(seed)
 
-	m := maze.New()
+	g := game.New()
+	g.Initialize(1)
+	g.ChooseEntrance(1)
 
-	count := func() int {
-		var count int
-		for i := 0; i < 10; i++ {
-			timeout := 512 + rand.Intn(512)
-			m.Generate(time.Duration(timeout) * time.Millisecond)
-			// Fetch the number of empty locations. Continue if the maze is complex enough.
-			count = m.CountEmpty()
-			if count >= 1200 {
-				return count
-			}
-			fmt.Println("Maze is not complex enough, try again.")
-		}
-		return count
-	}()
-
-	m.InsertEntrance()
-	m.Populate()
-	m.ChooseEntrance(1)
-
-	var moves int
-	for {
-		moves = m.Distance()
-		if moves > 120 {
-			// The treasure is sufficiently far away.
-			break
-		}
-
-		// The treasure is not far enough away.
-		fmt.Printf("Treasure is too close (%d moves), relocating...\n", moves)
-		m.RelocateTreasure()
-	}
-	displayMap(m.Map())
-	fmt.Printf("count = %d, moves = %d\n", count, moves)
+	displayMap(g.Map())
 }

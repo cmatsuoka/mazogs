@@ -69,14 +69,12 @@ type Maze struct {
 	treasurePos     int
 	area            []byte
 	genTime         time.Time
-	mazogTable      []int
 	codeAtPlayerPos byte
 }
 
 func New() *Maze {
 	return &Maze{
-		area:       make([]byte, MazeRows*MazeColumns),
-		mazogTable: make([]int, 40),
+		area: make([]byte, MazeRows*MazeColumns),
 	}
 }
 
@@ -534,7 +532,9 @@ func (m *Maze) Distance() int {
 // Populate inserts mazogs, swords and prisoners randomly within the maze. Mazogs can
 // only be placed at empty locations. Swords and prisoners can only be placed where
 // there is an internal wall. No items are placed next to an external wall.
-func (m *Maze) Populate() {
+func (m *Maze) Populate() (mazogTable []int) {
+	mazogTable = make([]int, numMazogs)
+
 	// Insert swords at random locations within the maze.
 	for i := 0; i < numSwords; i++ {
 		p := m.randomInternalWallPos()
@@ -562,10 +562,12 @@ func (m *Maze) Populate() {
 				}
 			}
 		}()
-		m.mazogTable[i] = p
+		mazogTable[i] = p
 	}
 
-	m.insertMazogs()
+	m.insertMazogs(mazogTable)
+
+	return mazogTable
 }
 
 // insertMazogs inserts all alive mazogs into the maze. It is used from above to
@@ -574,9 +576,9 @@ func (m *Maze) Populate() {
 // loop and if the mazog codes are already in the maze then they are simply overwritten,
 // causing no change. It is also used when examining the maze at the end of the game
 // after clearing the maze and then populating the route to the treasure.
-func (m *Maze) insertMazogs() {
+func (m *Maze) insertMazogs(mazogTable []int) {
 	for i := 0; i < numMazogs; i++ {
-		mp := m.mazogTable[i]
+		mp := mazogTable[i]
 		if mp > 0xff00 {
 			// Mazog has been killed.
 			continue
