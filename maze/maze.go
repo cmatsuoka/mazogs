@@ -82,22 +82,9 @@ func (m *Maze) Map() []byte {
 	return m.area
 }
 
-// Generate generates the maze. The maze must already have been filled with internal walls,
-// surrounded by an external wall. The routine creates a series of paths, with the initial
-// path starting from the maze entrance. A direction is selected at random and an attempt
-// made to progress the path in that direction. If this succeeds then a new random direction
-// is selected and an attempt made to progress the path in the new direction. If the path
-// could not be progressed in the selected direction then the other possible directions are
-// checked in a fixed circular sequence of left-right-down-up until a free direction is found.
-// The path is repeatedly progressed in this fashion until it is not possible to progress it
-// further in any direction. When this occurs, a random location within the maze is selected
-// to form the starting point of a new path and the process then continues from here. A path
-// will be progressed in the selected direction unless it would cause it to intersect with
-// an existing path. The routine will continue to attempt to route paths until a timeout
-// expires.
-func (m *Maze) Generate(genTimeout time.Duration) {
-	// Construct the maze area, setting the border around it and filling all internal
-	// locations with wall maze codes.
+// ConstructMazeArea sets the border around the maze and fills all internal locations with
+// internal wall maze codes.
+func constructMazeArea(m *Maze) {
 	for i := range m.area {
 		wall := InternalWall
 		if i < MazeColumns || i > (MazeRows-1)*MazeColumns {
@@ -112,7 +99,49 @@ func (m *Maze) Generate(genTimeout time.Duration) {
 		}
 		m.area[i] = wall
 	}
+}
 
+func (m *Maze) IntroMaze() {
+	constructMazeArea(m)
+	p := 7*MazeColumns + 22
+
+	// A section of the maze is filled as follows:
+	// 5T###
+	// ..BX#
+	// #*P #
+	// x*#s#
+
+	for k, v := range map[int]byte{
+		p - 2*MazeColumns - 2: PlayerWithTreasure,
+		p - 2*MazeColumns - 1: Treasure,
+		p - MazeColumns - 2:   Trail,
+		p - MazeColumns:       PlayerWithSwordRight,
+		p - 1:                 ThisWay,
+		p:                     Prisoner2,
+		p + 1:                 Empty,
+		p + MazeColumns + 1:   Sword,
+		p + MazeColumns - 1:   ThisWay,
+		p + MazeColumns - 2:   Mazog2,
+	} {
+		m.area[k] = v
+	}
+}
+
+// Generate generates the maze. The maze must already have been filled with internal walls,
+// surrounded by an external wall. The routine creates a series of paths, with the initial
+// path starting from the maze entrance. A direction is selected at random and an attempt
+// made to progress the path in that direction. If this succeeds then a new random direction
+// is selected and an attempt made to progress the path in the new direction. If the path
+// could not be progressed in the selected direction then the other possible directions are
+// checked in a fixed circular sequence of left-right-down-up until a free direction is found.
+// The path is repeatedly progressed in this fashion until it is not possible to progress it
+// further in any direction. When this occurs, a random location within the maze is selected
+// to form the starting point of a new path and the process then continues from here. A path
+// will be progressed in the selected direction unless it would cause it to intersect with
+// an existing path. The routine will continue to attempt to route paths until a timeout
+// expires.
+func (m *Maze) Generate(genTimeout time.Duration) {
+	constructMazeArea(m)
 	addTreasure(m)
 
 	m.genTime = time.Now()

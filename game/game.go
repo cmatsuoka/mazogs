@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/cmatsuoka/mazogs/graphics"
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
@@ -30,6 +31,7 @@ type Game struct {
 	hasCountdown   bool
 	mazogsJump     bool
 	mazogsMove     bool
+	slowDown       bool
 	movesRemaining int
 	movesKill      int
 	movesView      int
@@ -49,7 +51,16 @@ func New() *Game {
 	}
 }
 
+func (g *Game) Intro() {
+	g.maze.IntroMaze()
+	graphics.PrintAt(1, 6, "A MAZE ADVENTURE GAME")
+}
+
 func (g *Game) Initialize(level int) {
+
+	g.player.hasTreasure = false
+	g.slowDown = false
+
 	for i := 0; i < 10; i++ {
 		timeout := 512 + rand.Intn(512)
 		g.maze.Generate(time.Duration(timeout) * time.Millisecond)
