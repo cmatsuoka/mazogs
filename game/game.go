@@ -51,13 +51,43 @@ func New() *Game {
 	}
 }
 
+// Intro displays the animated title screen until a key is pressed.
 func (g *Game) Intro() {
 	g.maze.IntroMaze()
-	graphics.PrintAt(1, 6, "A MAZE ADVENTURE GAME")
+	fillScreen(0x88)
+	showSprites(g.maze, 4)
+
+	animateTitle := func(num int) (keyPressed bool) {
+		// scroll "MAZOGS" down the right hand side of the screen
+		for i := 4; i <= 21; i++ {
+			showSprites(g.maze, num)
+			graphics.PrintAt(i, 25, "MAZOGS")
+			if graphics.InKey() != "" {
+				return true
+			}
+		}
+		return false
+	}
+
+	for {
+		graphics.PrintAt(1, 6, "A MAZE ADVENTURE GAME")
+		if animateTitle(4) {
+			break
+		}
+		showSprites(g.maze, 5)
+		graphics.PrintAt(1, 6, "press a key to start")
+		if animateTitle(5) {
+			break
+		}
+	}
+}
+
+// WhichGame asks the user to select the game level.
+func (g *Game) WhichGame() int {
+	return LevelTryItOut
 }
 
 func (g *Game) Initialize(level int) {
-
 	g.player.hasTreasure = false
 	g.slowDown = false
 
@@ -114,4 +144,14 @@ func (g *Game) Map() []byte {
 
 func (g *Game) Report() SituationReport {
 	return SituationReport{}
+}
+
+func fillScreen(code byte) {
+
+}
+
+// showSprites toggles maze codes and displays a screenful of sprites around player
+// location. A maximum of num columns of sprites are displayed.
+func showSprites(m *maze.Maze, num int) {
+	fillScreen(0x80)
 }
