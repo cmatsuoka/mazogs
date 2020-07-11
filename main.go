@@ -3,51 +3,29 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/cmatsuoka/mazogs/game"
-	"github.com/cmatsuoka/mazogs/maze"
+	"github.com/cmatsuoka/mazogs/graphics"
 )
 
-func displayMap(themap []byte) {
-	for i := 0; i < maze.MazeRows; i++ {
-		for j := 0; j < maze.MazeColumns; j++ {
-			c := "  "
-			switch themap[i*maze.MazeColumns+j] {
-			case maze.InternalWall:
-				c = "██"
-			case maze.ExternalWall:
-				c = "▒▒"
-			case maze.Sword:
-				c = "🗡️ "
-			case maze.PlayerStanding:
-				c = "🧍"
-			case maze.Prisoner, maze.Prisoner2:
-				c = "😬"
-			case maze.Mazog, maze.Mazog2:
-				c = "❌"
-			case maze.Treasure, maze.Treasure2:
-				c = "💰"
-			case maze.ThisWay:
-				c = "**"
-			case maze.DeadEnd:
-				c = "xx"
-			case maze.Exit:
-				c = ">>"
-			}
-			fmt.Printf("%s", c)
-		}
-		fmt.Printf("\n")
+func run() error {
+	if err := graphics.Init("Mazogs", 800, 600); err != nil {
+		return err
 	}
+	defer graphics.Deinit()
+
+	g := game.New()
+	return g.Run()
 }
 
 func main() {
 	seed := time.Now().UnixNano()
 	rand.Seed(seed)
 
-	g := game.New()
-	g.Initialize(1)
-	g.ChooseEntrance(1)
-
-	displayMap(g.Map())
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v", err)
+		os.Exit(1)
+	}
 }

@@ -1,10 +1,52 @@
 package game
 
 import (
+	"github.com/cmatsuoka/mazogs/graphics"
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
-var sprites = map[byte][]byte{
+// showSprites toggles maze codes and displays a screenful of sprites around the
+// player location pos. A maximum of num columns of sprites are displayed.
+func showSprites(m *maze.Maze, num int) {
+	area := m.Map()
+	pos := m.PlayerPos - 2*maze.MazeColumns - 2
+
+	// loop for each sprite column within the maze to render
+	for c := 0; c < num; c++ {
+		// loop to render 4 maze codes vertically
+		for r := 0; r < 4; r++ {
+			index := pos + r*maze.MazeColumns + c
+			code := area[index]
+			switch code {
+			case maze.Prisoner, maze.Prisoner2,
+				maze.Treasure, maze.Treasure2,
+				maze.Mazog, maze.Mazog2:
+				// toggle the maze code
+				area[index] = code + 0x80
+			}
+			sp, ok := sprites[code]
+			if ok {
+				sp.render(r, c)
+			}
+		}
+	}
+}
+
+type sprite [30]byte
+
+func (sp sprite) render(r, c int) {
+	row := 3 + r*5
+	col := 1 + c*6
+	index := 0
+	for i := 0; i < 5; i++ {
+		for j := 0; j < 6; j++ {
+			graphics.PutZXChar(row+i, col+j, sp[index])
+			index++
+		}
+	}
+}
+
+var sprites = map[byte]sprite{
 
 	// |            |
 	// |     ##     |

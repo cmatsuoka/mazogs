@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	LevelTryItOut = iota + 1
-	LevelFaceAChallenge
-	LevelManiacMobileMazogs
+	levelTryItOut = iota + 1
+	levelFaceAChallenge
+	levelManiacMobileMazogs
 )
 
 type SituationReport struct {
@@ -51,10 +51,20 @@ func New() *Game {
 	}
 }
 
-// Intro displays the animated title screen until a key is pressed.
-func (g *Game) Intro() {
+func (g *Game) Run() error {
+	showIntro(g)
+	level := whichGame()
+	initialize(g, level)
+	situationReport(g)
+	return nil
+}
+
+// showIntro displays the animated title screen until a key is pressed.
+func showIntro(g *Game) {
 	g.maze.IntroMaze()
 	fillScreen(0x88)
+	smallDelay()
+	g.maze.PlayerPos = 470
 	showSprites(g.maze, 4)
 
 	animateTitle := func(num int) (keyPressed bool) {
@@ -65,7 +75,9 @@ func (g *Game) Intro() {
 			if graphics.InKey() != "" {
 				return true
 			}
+			smallDelay()
 		}
+		showSprites(g.maze, 5)
 		return false
 	}
 
@@ -75,19 +87,19 @@ func (g *Game) Intro() {
 			break
 		}
 		showSprites(g.maze, 5)
-		graphics.PrintAt(1, 6, "press a key to start")
+		graphics.PrintAt(1, 6, "press_a_key_to_start`")
 		if animateTitle(5) {
 			break
 		}
 	}
 }
 
-// WhichGame asks the user to select the game level.
-func (g *Game) WhichGame() int {
-	return LevelTryItOut
+// whichGame asks the user to select the game level.
+func whichGame() int {
+	return levelTryItOut
 }
 
-func (g *Game) Initialize(level int) {
+func initialize(g *Game, level int) {
 	g.player.hasTreasure = false
 	g.slowDown = false
 
@@ -138,20 +150,38 @@ func (g *Game) ChooseEntrance(dir int) {
 	g.movesView = 30 / g.level
 }
 
-func (g *Game) Map() []byte {
-	return g.maze.Map()
-}
+func situationReport(g *Game) {
+	fillScreen(0x88)
+	graphics.PrintAt(2, 7, "situation_report")
+	moves := g.maze.Distance()
+	if g.player.hasTreasure {
+		graphics.PrintAt(5, 2, fmt.Sprintf(`MOVES BACK TO "BASE" = %d`, moves))
+	} else {
+		graphics.PrintAt(5, 2, fmt.Sprintf("MOVES TO THE TREASURE = %d", moves))
+	}
 
-func (g *Game) Report() SituationReport {
-	return SituationReport{}
+	if g.level > levelTryItOut {
+	}
+
+	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
+
+	graphics.Present()
+	graphics.WaitKey()
 }
 
 func fillScreen(code byte) {
-
+	for i := 0; i < 24; i++ {
+		for j := 0; j < 32; j++ {
+			graphics.PutZXChar(i, j, code)
+		}
+	}
+	graphics.Present()
 }
 
-// showSprites toggles maze codes and displays a screenful of sprites around player
-// location. A maximum of num columns of sprites are displayed.
-func showSprites(m *maze.Maze, num int) {
-	fillScreen(0x80)
+func smallDelay() {
+	t0 := time.Now()
+	for time.Since(t0) < 400*time.Millisecond {
+		graphics.ProcessEvents()
+		time.Sleep(10 * time.Millisecond)
+	}
 }
