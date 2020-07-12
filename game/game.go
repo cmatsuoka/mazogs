@@ -13,6 +13,11 @@ const (
 	levelTryItOut = iota + 1
 	levelFaceAChallenge
 	levelManiacMobileMazogs
+
+	directionLeft
+	directionRight
+	directionUp
+	directionDown
 )
 
 type SituationReport struct {
@@ -39,15 +44,22 @@ type Game struct {
 	level          int
 	maze           *maze.Maze
 	mazogTable     []int
-	player         *Player
+
+	hasSword      bool
+	hasTreasure   bool
+	wayShown      bool
+	viewMode      bool
+	starved       bool
+	exited        bool
+	reportRequest bool
+	direction     int
+	killed        bool
 }
 
 func New() *Game {
 	maze := maze.New()
-	player := NewPlayer()
 	return &Game{
-		maze:   maze,
-		player: player,
+		maze: maze,
 	}
 }
 
@@ -56,6 +68,7 @@ func (g *Game) Run() error {
 	level := whichGame()
 	initialize(g, level)
 	situationReport(g)
+	play(g)
 	return nil
 }
 
@@ -100,7 +113,7 @@ func whichGame() int {
 }
 
 func initialize(g *Game, level int) {
-	g.player.hasTreasure = false
+	g.hasTreasure = false
 	g.slowDown = false
 
 	for i := 0; i < 10; i++ {
@@ -115,6 +128,73 @@ func initialize(g *Game, level int) {
 	g.maze.InsertEntrance()
 	g.mazogTable = g.maze.Populate()
 	g.level = level
+}
+
+func play(g *Game) {
+	fillScreen(0x88)
+
+	g.hasSword = false
+	g.hasTreasure = false
+	g.wayShown = false
+	g.viewMode = false
+	g.starved = false
+	g.exited = false
+	g.reportRequest = false
+	g.direction = 0
+	g.killed = false
+
+	for {
+		gameLoop(g)
+	}
+}
+
+func gameLoop(g *Game) {
+	if g.wayShown {
+		// Has the 'This Way' timer expired?
+
+		// The 'This Way' timer has expired so remove the 'This Way' markers.
+	}
+
+	if g.viewMode {
+		// Has the view timeout expired, i.e. after 5.1 seconds?
+	}
+
+	pos := g.maze.PlayerPos
+
+	switch graphics.InKey() {
+	case "a", "h", "Left":
+		pos--
+		g.direction = directionLeft
+	case "d", "j", "Right":
+		pos++
+		g.direction = directionRight
+	case "w", "Up":
+		pos -= maze.MazeColumns
+		g.direction = directionUp
+	case "x", "s", "Down":
+		pos += maze.MazeColumns
+		g.direction = directionDown
+	case "v":
+	case "y":
+	default:
+		showPlayerStanding(g)
+	}
+
+	graphics.Present()
+	smallDelay()
+}
+
+func showPlayerStanding(g *Game) {
+	var code byte
+	if g.hasTreasure {
+		code = maze.PlayerWithTreasure
+	} else if g.hasSword {
+		code = maze.PlayerWithSword
+	} else {
+		code = maze.PlayerStanding
+	}
+	g.maze.SetPlayerCode(code)
+	showSprites(g.maze, 5)
 }
 
 func (g *Game) ChooseEntrance(dir int) {
@@ -154,7 +234,7 @@ func situationReport(g *Game) {
 	fillScreen(0x88)
 	graphics.PrintAt(2, 7, "situation_report")
 	moves := g.maze.Distance()
-	if g.player.hasTreasure {
+	if g.hasTreasure {
 		graphics.PrintAt(5, 2, fmt.Sprintf(`MOVES BACK TO "BASE" = %d`, moves))
 	} else {
 		graphics.PrintAt(5, 2, fmt.Sprintf("MOVES TO THE TREASURE = %d", moves))

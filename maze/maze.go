@@ -82,6 +82,10 @@ func (m *Maze) Map() []byte {
 	return m.area
 }
 
+func (m *Maze) SetPlayerCode(code byte) {
+	m.area[m.PlayerPos] = code
+}
+
 // ConstructMazeArea sets the border around the maze and fills all internal locations with
 // internal wall maze codes.
 func constructMazeArea(m *Maze) {
