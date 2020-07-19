@@ -160,6 +160,7 @@ func gameLoop(g *Game) {
 	}
 
 	pos := g.maze.PlayerPos
+	g.direction = 0
 
 	switch graphics.InKey() {
 	case "a", "h", "Left":
@@ -178,10 +179,105 @@ func gameLoop(g *Game) {
 	case "y":
 	default:
 		showPlayerStanding(g)
+		smallDelay()
+		moveAllMazogs(g)
+		graphics.Present()
+		return
 	}
 
+	code := g.maze.Map()[pos]
+
+	switch code {
+	case maze.InternalWall:
+		showPlayerStanding(g)
+	case maze.Empty, maze.Trail, maze.ThisWay:
+		movePlayer(g, pos)
+	case maze.Mazog, maze.Mazog2:
+	case maze.Treasure, maze.Treasure2:
+	case maze.Prisoner, maze.Prisoner2:
+	case maze.Sword:
+	case maze.Exit:
+	}
+
+	moveAllMazogs(g)
 	graphics.Present()
+}
+
+func moveAllMazogs(g *Game) {
+}
+
+func movePlayer(g *Game, pos int) {
+	code := g.maze.Map()[pos]
+
+	updatePlayer := func(code, playerWithTreasure, playerWithTreasure2, playerWithSword, playerWithSword2, player, player2 byte) byte {
+		if g.hasTreasure {
+			if code == playerWithTreasure {
+				code = playerWithTreasure2
+			} else {
+				code = playerWithTreasure
+			}
+		} else if g.hasSword {
+			if code == playerWithSword {
+				code = playerWithSword2
+			} else {
+				code = playerWithSword
+			}
+		} else {
+			if code == player {
+				code = player2
+			} else {
+				code = player
+			}
+		}
+		return code
+	}
+
+	switch g.direction {
+	case directionRight:
+		code = updatePlayer(code,
+			maze.PlayerWithTreasureRight, maze.PlayerWithTreasureRight2,
+			maze.PlayerWithSwordRight, maze.PlayerWithSwordRight2,
+			maze.PlayerRight, maze.PlayerRight2)
+	case directionUp:
+		code = updatePlayer(code,
+			maze.PlayerWithTreasureUp, maze.PlayerWithTreasureUp2,
+			maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2,
+			maze.PlayerUpDown, maze.PlayerUpDown2)
+	case directionDown:
+		code = updatePlayer(code,
+			maze.PlayerWithTreasureDown, maze.PlayerWithTreasureDown2,
+			maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2,
+			maze.PlayerUpDown, maze.PlayerUpDown2)
+	case directionLeft:
+		code = updatePlayer(code,
+			maze.PlayerWithTreasureLeft, maze.PlayerWithTreasureLeft2,
+			maze.PlayerWithSwordLeft, maze.PlayerWithSwordLeft2,
+			maze.PlayerLeft, maze.PlayerLeft2)
+	}
+
+	mazeMap := g.maze.Map()
+	// Set the maze code for the player at the new maze position.
+	mazeMap[pos] = code
+	// Place a trail marker in the older player location within the maze.
+	mazeMap[g.maze.PlayerPos] = maze.Trail
+	// Save the new location of the player in the maze.
+	g.maze.PlayerPos = pos
+
+	decrementTimer(g)
 	smallDelay()
+
+	// Did the player starve to death?
+	if g.starved {
+	}
+
+	if g.level == levelTryItOut {
+		smallDelay()
+	}
+
+	showSprites(g.maze, 5)
+}
+
+func decrementTimer(g *Game) {
 }
 
 func showPlayerStanding(g *Game) {
