@@ -3,6 +3,7 @@ package graphics
 import (
 	"fmt"
 	"os"
+	"unsafe"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -131,7 +132,7 @@ func buildFontAtlas() {
 	for i := byte(0); i < 128; i++ {
 		dst := sdl.Rect{X: int32((i & 0x0f) << 3), Y: int32((i >> 4) << 3), W: 8, H: 8}
 		buildCharPixels(font[i], &pixels)
-		fontAtlas.Update(&dst, pixels[:], 8*3)
+		fontAtlas.Update(&dst, unsafe.Pointer(&pixels[0]), 8*3)
 	}
 }
 
