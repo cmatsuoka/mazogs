@@ -205,7 +205,7 @@ func moveAllMazogs(g *Game) {
 }
 
 func movePlayer(g *Game, pos int) {
-	code := g.maze.Map()[pos]
+	code := g.maze.Map()[g.maze.PlayerPos]
 
 	updatePlayer := func(code, playerWithTreasure, playerWithTreasure2, playerWithSword, playerWithSword2, player, player2 byte) byte {
 		if g.hasTreasure {
