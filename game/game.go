@@ -44,16 +44,17 @@ type Game struct {
 	maze           *maze.Maze
 	mazogTable     []int
 
-	hasSword      bool
-	hasTreasure   bool
-	wayShown      bool
-	viewMode      bool
-	viewModeAt    time.Time
-	starved       bool
-	exited        bool
-	reportRequest bool
-	direction     int
-	killed        bool
+	hasSword        bool
+	hasTreasure     bool
+	wayShown        bool
+	viewMode        bool
+	viewModeAt      time.Time
+	starved         bool
+	exited          bool
+	reportRequest   bool
+	direction       int
+	killed          bool
+	enteredFromLeft bool
 }
 
 func New() *Game {
@@ -67,6 +68,7 @@ func (g *Game) Run() error {
 	showIntro(g)
 	level := whichGame()
 	initialize(g, level)
+	chooseEntranceSide(g)
 	situationReport(g)
 	play(g)
 	return nil
@@ -369,8 +371,49 @@ func showPlayerStanding(g *Game) {
 	showSprites(g.maze, 5)
 }
 
+// chooseEntranceSide shows the entrance view and waits for the player to press
+// 'L' or 'R' to select which side of the maze to enter from. It then inserts
+// a wall on the blocked side and completes entrance setup. Mirrors BASIC lines
+// 6310–6366.
+func chooseEntranceSide(g *Game) {
+	fillScreen(0x88)
+	displayView(g)
+	graphics.PrintAt(2, 1, `WHICH WAY ?   PRESS "L" OR "R"`)
+	graphics.Present()
+
+	var dir int
+	for {
+		graphics.WaitKey()
+		key := graphics.InKey()
+		if key == "l" {
+			dir = directionLeft
+			g.enteredFromLeft = true
+			break
+		}
+		if key == "r" {
+			dir = directionRight
+			g.enteredFromLeft = false
+			break
+		}
+	}
+
+	g.ChooseEntrance(dir)
+
+	fillScreen(0x88)
+	displayView(g)
+	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR INFORMATION")
+	graphics.Present()
+	graphics.WaitKey()
+}
+
 func (g *Game) ChooseEntrance(dir int) {
-	g.maze.ChooseEntrance(dir)
+	// maze.ChooseEntrance uses dir > 0 for "enter from right"; translate our
+	// direction constants (all positive) to its 0/1 convention.
+	mazeDir := 0
+	if dir == directionRight {
+		mazeDir = 1
+	}
+	g.maze.ChooseEntrance(mazeDir)
 
 	var moves int
 	for {
