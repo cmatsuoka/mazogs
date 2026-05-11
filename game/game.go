@@ -2,7 +2,6 @@ package game
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/cmatsuoka/mazogs/graphics"
@@ -117,8 +116,7 @@ func initialize(g *Game, level int) {
 	g.slowDown = false
 
 	for i := 0; i < 10; i++ {
-		timeout := 512 + rand.Intn(512)
-		g.maze.Generate(time.Duration(timeout) * time.Millisecond)
+		g.maze.Generate()
 		// Fetch the number of empty locations. Continue if the maze is complex enough.
 		if g.maze.CountEmpty() >= 1200 {
 			break

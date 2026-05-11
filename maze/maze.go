@@ -2,7 +2,6 @@ package maze
 
 import (
 	"math/rand"
-	"time"
 )
 
 const (
@@ -68,7 +67,6 @@ type Maze struct {
 	exitPos         int
 	treasurePos     int
 	area            []byte
-	genTime         time.Time
 	codeAtPlayerPos byte
 }
 
@@ -133,6 +131,14 @@ func (m *Maze) IntroMaze() {
 	}
 }
 
+// maxConsecutiveDeadEnds is the number of consecutive dead ends without
+// carving a single cell before declaring the maze saturated.
+const maxConsecutiveDeadEnds = 512
+
+// maxStartSearchRetries is the maximum number of random candidates tried in
+// newStartPosition before giving up (i.e. no empty cells remain).
+const maxStartSearchRetries = 1024
+
 // Generate generates the maze. The maze must already have been filled with internal walls,
 // surrounded by an external wall. The routine creates a series of paths, with the initial
 // path starting from the maze entrance. A direction is selected at random and an attempt
@@ -142,81 +148,89 @@ func (m *Maze) IntroMaze() {
 // checked in a fixed circular sequence of left-right-down-up until a free direction is found.
 // The path is repeatedly progressed in this fashion until it is not possible to progress it
 // further in any direction. When this occurs, a random location within the maze is selected
-// to form the starting point of a new path and the process then continues from here. A path
-// will be progressed in the selected direction unless it would cause it to intersect with
-// an existing path. The routine will continue to attempt to route paths until a timeout
-// expires.
-func (m *Maze) Generate(genTimeout time.Duration) {
+// to form the starting point of a new path and the process then continues from here.
+// Generation stops when maxConsecutiveDeadEnds dead ends occur without any cell being carved,
+// which indicates the maze is fully saturated.
+func (m *Maze) Generate() {
 	constructMazeArea(m)
 	addTreasure(m)
 
-	m.genTime = time.Now()
 	pos := m.PlayerPos
+	deadEnds := 0
 
 	for {
 		direction := rand.Intn(4)
 		switch direction {
 		case 0:
 			if canGoLeft(m, &pos) {
+				deadEnds = 0
 				continue
 			}
 			fallthrough
 		case 1:
 			if canGoRight(m, &pos) {
+				deadEnds = 0
 				continue
 			}
 			fallthrough
 		case 2:
 			if canGoUp(m, &pos) {
+				deadEnds = 0
 				continue
 			}
 			fallthrough
 		case 3:
 			if canGoDown(m, &pos) {
+				deadEnds = 0
 				continue
 			}
 		}
 		if canGoLeft(m, &pos) {
+			deadEnds = 0
 			continue
 		}
 		if canGoRight(m, &pos) {
+			deadEnds = 0
 			continue
 		}
 		if canGoUp(m, &pos) {
+			deadEnds = 0
 			continue
 		}
 
 		// This point is reached when it is no longer possible to progress the path
 		// in any direction, select a random location for the start of a new path.
-		var timeout bool
-		pos, timeout = newStartPosition(m, genTimeout)
-		if timeout {
+		deadEnds++
+		if deadEnds >= maxConsecutiveDeadEnds {
+			break
+		}
+		var found bool
+		pos, found = newStartPosition(m)
+		if !found {
 			break
 		}
 	}
 }
 
-func newStartPosition(m *Maze, genTimeout time.Duration) (pos int, timeout bool) {
-	for {
-		if time.Since(m.genTime) > genTimeout {
-			return 0, true
-		}
+func newStartPosition(m *Maze) (pos int, found bool) {
+	for i := 0; i < maxStartSearchRetries; i++ {
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
 		p := 2*MazeColumns + rand.Intn(256)*11
-		for i := 0; i < 7; i++ {
+		for j := 0; j < 7; j++ {
 			if m.area[p] == Empty {
-				return p, false
+				return p, true
 			}
 			// The location is not empty, i.e. it contains an internal
 			// wall. So check for an empty location within the 6 positions
-			// to the right.If an empty location is found then this is
+			// to the right. If an empty location is found then this is
 			// used as the starting position for a new path.
 			p++
 		}
 		// An empty location was not found near the randomly selected location
 		// so jump back to select a new random location to try.
 	}
+	return 0, false
 }
 
 func canGoLeft(m *Maze, pos *int) bool {
