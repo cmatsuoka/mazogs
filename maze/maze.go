@@ -204,7 +204,7 @@ func newStartPosition(m *Maze, genTimeout time.Duration) (pos int, timeout bool)
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
 		p := 2*MazeColumns + rand.Intn(256)*11
-		for i := 0; i < 6; i++ {
+		for i := 0; i < 7; i++ {
 			if m.area[p] == Empty {
 				return p, false
 			}
