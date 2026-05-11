@@ -347,6 +347,11 @@ func countCode(m *Maze, what byte) (count int) {
 	return count
 }
 
+// ClearMaze clears the maze of mazogs, trails, and 'This Way's.
+func (m *Maze) ClearMaze() {
+	clearMaze(m)
+}
+
 // clearMaze clears the maze of mazogs, trails, and 'This Way's
 func clearMaze(m *Maze) {
 	p := m.PlayerPos

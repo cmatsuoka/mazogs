@@ -48,6 +48,7 @@ type Game struct {
 	hasTreasure   bool
 	wayShown      bool
 	viewMode      bool
+	viewModeAt    time.Time
 	starved       bool
 	exited        bool
 	reportRequest bool
@@ -154,7 +155,20 @@ func gameLoop(g *Game) {
 	}
 
 	if g.viewMode {
-		// Has the view timeout expired, i.e. after 5.1 seconds?
+		// Has the view timeout expired, i.e. after 5.12 seconds?
+		if time.Since(g.viewModeAt) >= 5120*time.Millisecond {
+			g.viewMode = false
+			fillScreen(0x88) // restore game background before normal rendering
+		} else {
+			// Use smallDelay (not time.Sleep) so SDL events are pumped,
+			// ensuring the KEYUP for 'V' is processed before the timer
+			// fires and control returns to InKey().
+			smallDelay()
+			displayView(g)
+			moveAllMazogs(g)
+			graphics.Present()
+			return
+		}
 	}
 
 	pos := g.maze.PlayerPos
@@ -174,6 +188,17 @@ func gameLoop(g *Game) {
 		pos += maze.MazeColumns
 		g.direction = directionDown
 	case "v":
+		g.viewMode = true
+		g.viewModeAt = time.Now()
+		fillScreen(0x88) // inverse checkerboard, matches assembly L43D5 (_INVCHEQUERBOARD=$88)
+		decrementTimer(g) // deduct movesView once on entry
+		if g.hasCountdown {
+			g.maze.ClearMaze()
+		}
+		displayView(g)
+		moveAllMazogs(g)
+		graphics.Present()
+		return
 	case "y":
 	default:
 		showPlayerStanding(g)
@@ -276,6 +301,59 @@ func movePlayer(g *Game, pos int) {
 }
 
 func decrementTimer(g *Game) {
+	if !g.hasCountdown {
+		return
+	}
+	if g.viewMode {
+		// Assembly L50BC: test (movesRemaining - 1 - movesView) for underflow.
+		// If negative, keep movesRemaining unchanged (can't afford the view).
+		// If non-negative, deduct movesView (the -1 is only used for the test).
+		if g.movesRemaining-1-g.movesView < 0 {
+			return
+		}
+		g.movesRemaining -= g.movesView
+		return
+	}
+	// Assembly L4B56/L50DF: if movesRemaining is already 0, set starved and
+	// keep it at 0. Otherwise decrement by 1 (starvation is checked on the
+	// next call when 0 is found, not immediately after hitting 0).
+	if g.movesRemaining == 0 {
+		g.starved = true
+		return
+	}
+	g.movesRemaining--
+}
+
+// displayView renders a 16×16 cell window of raw maze codes centred on the
+// player, starting at screen position (row=4, col=8). Cells outside the maze
+// bounds are shown as InternalWall. This mirrors the ZX-81 View routine at
+// L517C.
+func displayView(g *Game) {
+	const (
+		viewRows   = 16
+		viewCols   = 16
+		screenRow  = 4
+		screenCol  = 8
+		halfRows   = viewRows / 2
+		halfCols   = viewCols / 2
+	)
+
+	area := g.maze.Map()
+	mazeSize := len(area)
+	startPos := g.maze.PlayerPos - halfRows*maze.MazeColumns - halfCols
+
+	for r := 0; r < viewRows; r++ {
+		for c := 0; c < viewCols; c++ {
+			pos := startPos + r*maze.MazeColumns + c
+			var code byte
+			if pos < 0 || pos >= mazeSize {
+				code = maze.InternalWall
+			} else {
+				code = area[pos]
+			}
+			graphics.PutZXChar(screenRow+r, screenCol+c, code)
+		}
+	}
 }
 
 func showPlayerStanding(g *Game) {
