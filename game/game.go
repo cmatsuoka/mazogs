@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	levelTryItOut = iota + 1
-	levelFaceAChallenge
-	levelManiacMobileMazogs
+	levelEasy = iota + 1
+	levelMedium
+	levelHard
 
 	directionLeft
 	directionRight
@@ -66,7 +66,7 @@ func New() *Game {
 
 func (g *Game) Run() error {
 	showIntro(g)
-	level := whichGame()
+	level := whichGame(g)
 	initialize(g, level)
 	chooseEntranceSide(g)
 	situationReport(g)
@@ -109,14 +109,62 @@ func showIntro(g *Game) {
 	}
 }
 
-// whichGame asks the user to select the game level.
-func whichGame() int {
-	return levelTryItOut
+// whichGame shows the level selection screen and sets game flags on g.
+// The maze must be in IntroMaze state (set by showIntro) when called.
+func whichGame(g *Game) int {
+	p := g.maze.PlayerPos
+	for {
+		fillScreen(0x88)
+		graphics.PrintAt(1, 10, "WHICH GAME ?")
+		graphics.PrintAt(10, 5, "1. TRY IT OUT")
+		graphics.PrintAt(12, 5, "2. FACE A CHALLENGE")
+		graphics.PrintAt(14, 5, "3. MANIAC MOBILE MAZOGS")
+		graphics.PrintAt(18, 5, "PRESS NUMBER TO CHOOSE")
+		graphics.WaitKey()
+		switch graphics.InKey() {
+		case "1":
+			fillScreen(0x00)
+			g.maze.Map()[p-128] = maze.PlayerWithTreasureLeft
+			showSprites(g.maze, 5)
+			graphics.PrintAt(1, 11, "TRY IT OUT")
+			graphics.Present()
+			g.hasCountdown = false
+			g.mazogsMove = false
+			g.mazogsJump = false
+			g.slowDown = true
+			return levelEasy
+		case "2":
+			fillScreen(0x00)
+			g.maze.Map()[p-128] = maze.PlayerWithSwordRight
+			showSprites(g.maze, 5)
+			graphics.PrintAt(1, 8, "FACE A CHALLENGE")
+			graphics.Present()
+			g.hasCountdown = true
+			g.mazogsMove = false
+			g.mazogsJump = false
+			g.slowDown = false
+			return levelMedium
+		case "3":
+			fillScreen(0x00)
+			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
+			g.maze.Map()[p-128] = maze.PlayerStanding
+			g.maze.Map()[p-129] = maze.Mazog
+			g.maze.Map()[p-127] = maze.Mazog
+			for i := 0; i < 10; i++ {
+				showSprites(g.maze, 5)
+				graphics.Present()
+			}
+			g.hasCountdown = true
+			g.mazogsMove = true
+			g.mazogsJump = true
+			g.slowDown = false
+			return levelHard
+		}
+	}
 }
 
 func initialize(g *Game, level int) {
 	g.hasTreasure = false
-	g.slowDown = false
 
 	for i := 0; i < 10; i++ {
 		g.maze.Generate()
@@ -318,13 +366,12 @@ func movePlayer(g *Game, pos int) {
 
 	decrementTimer(g)
 	smallDelay()
+	if g.slowDown {
+		smallDelay()
+	}
 
 	// Did the player starve to death?
 	if g.starved {
-	}
-
-	if g.level == levelTryItOut {
-		smallDelay()
 	}
 
 	showSprites(g.maze, 5)
@@ -483,7 +530,7 @@ func situationReport(g *Game) {
 		graphics.PrintAt(5, 2, fmt.Sprintf("MOVES TO THE TREASURE = %d", moves))
 	}
 
-	if g.level > levelTryItOut {
+	if g.level > levelEasy {
 	}
 
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
