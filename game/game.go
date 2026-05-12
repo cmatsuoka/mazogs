@@ -55,6 +55,7 @@ type Game struct {
 	direction       int
 	killed          bool
 	enteredFromLeft bool
+	moving          bool // true after the first step; resets when player stops
 }
 
 func New() *Game {
@@ -191,7 +192,9 @@ func play(g *Game) {
 	g.reportRequest = false
 	g.direction = 0
 	g.killed = false
+	g.moving = false
 
+	graphics.ClearKeys() // discard any key state from previous screens
 	for {
 		gameLoop(g)
 	}
@@ -250,6 +253,16 @@ func gameLoop(g *Game) {
 		graphics.Present()
 		return
 	case "y":
+	case "":
+		// No key held — show idle sprite and poll quickly so a new press
+		// is picked up immediately.
+		g.moving = false
+		showPlayerStanding(g)
+		graphics.ProcessEvents()
+		time.Sleep(10 * time.Millisecond)
+		moveAllMazogs(g)
+		graphics.Present()
+		return
 	default:
 		showPlayerStanding(g)
 		smallDelay()
@@ -262,8 +275,8 @@ func gameLoop(g *Game) {
 
 	switch code {
 	case maze.InternalWall:
+		g.moving = false
 		showPlayerStanding(g)
-		smallDelay()
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
@@ -277,6 +290,7 @@ func gameLoop(g *Game) {
 			m.Map()[pos] = maze.InternalWall
 		}
 		g.hasTreasure = true
+		g.moving = false
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		smallDelay()
 	case maze.Prisoner, maze.Prisoner2:
@@ -296,6 +310,7 @@ func gameLoop(g *Game) {
 			g.hasSword = true
 			showPlayerStanding(g)
 		}
+		g.moving = false
 		smallDelay()
 	case maze.Exit:
 	}
@@ -365,7 +380,12 @@ func movePlayer(g *Game, pos int) {
 	g.maze.PlayerPos = pos
 
 	decrementTimer(g)
-	smallDelay()
+	if g.moving {
+		smallDelay()
+	} else {
+		shortDelay()
+		g.moving = true
+	}
 	if g.slowDown {
 		smallDelay()
 	}
@@ -549,8 +569,22 @@ func fillScreen(code byte) {
 }
 
 func smallDelay() {
+	// Clear the latch so the next move requires a fresh key press.
+	// A physically held key (keyValue) still works for continuous movement.
+	graphics.ClearLatch()
 	t0 := time.Now()
 	for time.Since(t0) < 400*time.Millisecond {
+		graphics.ProcessEvents()
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// shortDelay is used after the first step of a movement sequence to give a
+// snappier start-of-walking feel. Subsequent steps use the full smallDelay.
+func shortDelay() {
+	graphics.ClearLatch()
+	t0 := time.Now()
+	for time.Since(t0) < 50*time.Millisecond {
 		graphics.ProcessEvents()
 		time.Sleep(10 * time.Millisecond)
 	}

@@ -61,7 +61,32 @@ func PutZXChar(row, col int, c byte) {
 }
 
 func InKey() string {
-	return keyValue
+	if keyValue != "" {
+		return keyValue
+	}
+	k := keyLatch
+	keyLatch = ""
+	return k
+}
+
+// HasKey reports whether a key is currently held or was recently pressed,
+// without consuming the latch so InKey can still read it.
+func HasKey() bool {
+	return keyValue != "" || keyLatch != ""
+}
+
+// ClearLatch discards any pending key latch without consuming it via InKey.
+// Call after processing an action to require a fresh key press for the next.
+func ClearLatch() {
+	keyLatch = ""
+}
+
+// ClearKeys discards both the current key state and the latch. Use at
+// context transitions (e.g. game start) so held keys from a previous screen
+// don't carry over into the new context.
+func ClearKeys() {
+	keyValue = ""
+	keyLatch = ""
 }
 
 func convertCode(c byte) byte {

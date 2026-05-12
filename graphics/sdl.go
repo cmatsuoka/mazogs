@@ -19,6 +19,7 @@ var (
 
 	keyPressed bool
 	keyValue   string
+	keyLatch   string // set on KEYDOWN, cleared only when consumed by InKey
 )
 
 func Init(title string, width, height int32) error {
@@ -104,6 +105,7 @@ func ProcessEvents() {
 			if kev.Type == sdl.KEYDOWN {
 				keyPressed = true
 				keyValue = string(kev.Keysym.Sym)
+				keyLatch = keyValue
 			} else {
 				keyValue = ""
 			}
