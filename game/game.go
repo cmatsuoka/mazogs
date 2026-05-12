@@ -215,12 +215,40 @@ func gameLoop(g *Game) {
 	switch code {
 	case maze.InternalWall:
 		showPlayerStanding(g)
+		smallDelay()
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
 	case maze.Treasure, maze.Treasure2:
+		m := g.maze
+		m.Map()[m.ExitPos()] = maze.Exit // place exit in the maze
+		if g.hasSword {
+			m.Map()[pos] = maze.Sword // drop sword at treasure location
+			g.hasSword = false
+		} else {
+			m.Map()[pos] = maze.InternalWall
+		}
+		g.hasTreasure = true
+		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
+		smallDelay()
 	case maze.Prisoner, maze.Prisoner2:
 	case maze.Sword:
+		m := g.maze
+		if g.hasSword {
+			// already armed, treat as a wall
+			showPlayerStanding(g)
+		} else if g.hasTreasure {
+			m.Map()[pos] = maze.Treasure      // drop treasure at sword location
+			g.hasTreasure = false
+			m.Map()[m.ExitPos()] = maze.Empty // remove exit
+			g.hasSword = true
+			showPlayerStanding(g)
+		} else {
+			m.Map()[pos] = maze.InternalWall
+			g.hasSword = true
+			showPlayerStanding(g)
+		}
+		smallDelay()
 	case maze.Exit:
 	}
 

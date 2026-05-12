@@ -80,6 +80,10 @@ func (m *Maze) Map() []byte {
 	return m.area
 }
 
+func (m *Maze) ExitPos() int {
+	return m.exitPos
+}
+
 func (m *Maze) SetPlayerCode(code byte) {
 	m.area[m.PlayerPos] = code
 }
