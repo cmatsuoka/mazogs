@@ -362,7 +362,7 @@ func clearMaze(m *Maze) {
 	m.codeAtPlayerPos = m.area[p]
 	for i, code := range m.area {
 		switch code {
-		case Trail, ThisWay, Mazog, Mazog2:
+		case Trail, ThisWay, Mazog, Mazog2, DeadEnd:
 			m.area[i] = Empty
 		}
 	}
@@ -602,7 +602,7 @@ func (m *Maze) Populate() (mazogTable []int) {
 	// Insert prisoners at random locations within the maze.
 	for i := 0; i < numPrisoners; i++ {
 		p := m.randomInternalWallPos()
-		m.area[p] = Prisoner
+		m.area[p] = Prisoner2
 	}
 
 	// Determine random locations within the maze for the mazogs. The addresses

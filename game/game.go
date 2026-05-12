@@ -47,6 +47,7 @@ type Game struct {
 	hasSword        bool
 	hasTreasure     bool
 	wayShown        bool
+	wayShownAt      time.Time
 	viewMode        bool
 	viewModeAt      time.Time
 	starved         bool
@@ -201,10 +202,15 @@ func play(g *Game) {
 }
 
 func gameLoop(g *Game) {
-	if g.wayShown {
-		// Has the 'This Way' timer expired?
+	graphics.ProcessEvents() // pump SDL events every iteration to handle KEYUP reliably
 
-		// The 'This Way' timer has expired so remove the 'This Way' markers.
+	if g.wayShown {
+		// The assembly resets FRAMES to $FFFF and clears when the high byte
+		// reaches $FC (~15 seconds at 50Hz). Use a 15-second timeout here.
+		if time.Since(g.wayShownAt) >= 15360*time.Millisecond {
+			g.maze.ClearMaze()
+			g.wayShown = false
+		}
 	}
 
 	if g.viewMode {
@@ -253,6 +259,8 @@ func gameLoop(g *Game) {
 		graphics.Present()
 		return
 	case "y":
+		g.reportRequest = true
+		return
 	case "":
 		// No key held — show idle sprite and poll quickly so a new press
 		// is picked up immediately.
@@ -294,6 +302,18 @@ func gameLoop(g *Game) {
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		smallDelay()
 	case maze.Prisoner, maze.Prisoner2:
+		showPlayerStanding(g)
+		if g.mazogsMove {
+			g.maze.Map()[pos] = maze.InternalWall
+		}
+		g.maze.ClearMaze()
+		g.maze.TraceRoute()
+		showSprites(g.maze, 5) // render route markers
+		graphics.Present()     // show immediately so the route is visible during the delay
+		g.wayShown = true
+		g.wayShownAt = time.Now()
+		g.moving = false
+		smallDelay()
 	case maze.Sword:
 		m := g.maze
 		if g.hasSword {
