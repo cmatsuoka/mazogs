@@ -117,6 +117,7 @@ func whichGame(g *Game) int {
 	for {
 		fillScreen(0x80) // solid black, matches assembly BB subroutine (BASIC 6037: POKE 17370,128)
 		renderWallBackground()
+		sprites[maze.Mazog].render(0, 2) // BASIC 2082: POKE N-128,189 then USR 18602 toggles to eyes-open
 		graphics.PrintAt(1, 10, "WHICH GAME ?")
 		graphics.PrintAt(10, 5, "1. TRY IT OUT")
 		graphics.PrintAt(12, 5, "2. FACE A CHALLENGE")
@@ -152,8 +153,12 @@ func whichGame(g *Game) int {
 			renderWallBackground()
 			for i := 0; i < 10; i++ {
 				sprites[maze.PlayerStanding].render(0, 2)
-				sprites[maze.Mazog].render(0, 1)
-				sprites[maze.Mazog].render(0, 3)
+				mazogCode := byte(maze.Mazog)
+				if i%2 == 0 {
+					mazogCode = maze.Mazog2 // toggle 0x3D-0xBD each iteration
+				}
+				sprites[mazogCode].render(0, 1)
+				sprites[mazogCode].render(0, 3)
 				graphics.Present()
 			}
 			g.hasCountdown = true
@@ -249,7 +254,7 @@ func gameLoop(g *Game) {
 	case "v":
 		g.viewMode = true
 		g.viewModeAt = time.Now()
-		fillScreen(0x88) // inverse checkerboard, matches assembly L43D5 (_INVCHEQUERBOARD=$88)
+		fillScreen(0x88)  // inverse checkerboard, matches assembly L43D5 (_INVCHEQUERBOARD=$88)
 		decrementTimer(g) // deduct movesView once on entry
 		if g.hasCountdown {
 			g.maze.ClearMaze()
@@ -320,7 +325,7 @@ func gameLoop(g *Game) {
 			// already armed, treat as a wall
 			showPlayerStanding(g)
 		} else if g.hasTreasure {
-			m.Map()[pos] = maze.Treasure      // drop treasure at sword location
+			m.Map()[pos] = maze.Treasure // drop treasure at sword location
 			g.hasTreasure = false
 			m.Map()[m.ExitPos()] = maze.Empty // remove exit
 			g.hasSword = true
@@ -447,12 +452,12 @@ func decrementTimer(g *Game) {
 // L517C.
 func displayView(g *Game) {
 	const (
-		viewRows   = 16
-		viewCols   = 16
-		screenRow  = 4
-		screenCol  = 8
-		halfRows   = viewRows / 2
-		halfCols   = viewCols / 2
+		viewRows  = 16
+		viewCols  = 16
+		screenRow = 4
+		screenCol = 8
+		halfRows  = viewRows / 2
+		halfCols  = viewCols / 2
 	)
 
 	area := g.maze.Map()
