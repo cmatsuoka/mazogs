@@ -634,6 +634,13 @@ func (m *Maze) Populate() (mazogTable []int) {
 // loop and if the mazog codes are already in the maze then they are simply overwritten,
 // causing no change. It is also used when examining the maze at the end of the game
 // after clearing the maze and then populating the route to the treasure.
+// InsertMazogs re-inserts all live mazogs from the table into the maze.
+// Called at the start of each movement cycle so mazogs reappear after any
+// clearMaze call (e.g. Distance, view mode, This Way timeout).
+func (m *Maze) InsertMazogs(mazogTable []int) {
+	m.insertMazogs(mazogTable)
+}
+
 func (m *Maze) insertMazogs(mazogTable []int) {
 	for i := 0; i < numMazogs; i++ {
 		mp := mazogTable[i]
@@ -641,10 +648,11 @@ func (m *Maze) insertMazogs(mazogTable []int) {
 			// Mazog has been killed.
 			continue
 		}
-		if m.area[mp] == Mazog2 {
+		// Assembly L4EE7: preserve _INVX (eyes closed), restore everything else to _X (eyes open).
+		// showSprites then toggles the code on each render, producing the blink animation.
+		// The old code toggled here too (double-toggle = static display).
+		if m.area[mp] != Mazog2 {
 			m.area[mp] = Mazog
-		} else {
-			m.area[mp] = Mazog2
 		}
 	}
 }

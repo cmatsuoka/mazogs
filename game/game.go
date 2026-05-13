@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/cmatsuoka/mazogs/graphics"
@@ -319,6 +320,59 @@ func gameLoop(g *Game) {
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
+		// Assembly L495C: credit movesKill before the fight (win or lose).
+		g.movesRemaining += g.movesKill
+
+		// Assembly L4E2A: leave trail at old position, move player to mazog's cell.
+		g.maze.Map()[g.maze.PlayerPos] = maze.Trail
+		g.maze.PlayerPos = pos
+
+		// 7-iteration fight animation: Fighting1, Mazog, Fighting2, Mazog2, Fighting3, Mazog.
+		// On real ZX-81 each render takes ~90ms; we replicate that here.
+		// Events are pumped during each sleep so KEYUP is processed (prevents
+		// the held key from triggering a movement step after the fight ends).
+		for i := 0; i < 7; i++ {
+			for _, frame := range []byte{
+				maze.Fighting1, maze.Mazog,
+				maze.Fighting2, maze.Mazog2,
+				maze.Fighting3, maze.Mazog,
+			} {
+				g.maze.Map()[pos] = frame
+				showSprites(g.maze, 5)
+				graphics.Present()
+				t0 := time.Now()
+				for time.Since(t0) < 90*time.Millisecond {
+					graphics.ProcessEvents()
+					time.Sleep(10 * time.Millisecond)
+				}
+			}
+		}
+
+		// Assembly L4E5C: sword wins unconditionally; no sword = 50/50 random.
+		// Assembly L4E83 uses a 4-way random split (L40B4) and wins on quarters 1 & 3.
+		quarter := rand.Intn(4) + 1 // 1, 2, 3, or 4
+		won := g.hasSword || quarter == 1 || quarter == 3
+		if won {
+			// Find this mazog in the table by position and mark it dead.
+			for i, mp := range g.mazogTable {
+				if mp == pos {
+					g.mazogTable[i] = 0xffff
+					break
+				}
+			}
+			g.hasSword = false
+			g.moving = false
+			graphics.ClearKeys() // discard key held during fight; require fresh press
+			showPlayerStanding(g)
+		} else {
+			// Mazog wins: 25 rapid blink cycles, then player is killed.
+			g.maze.Map()[pos] = maze.Mazog
+			for i := 0; i < 25; i++ {
+				showSprites(g.maze, 5)
+				graphics.Present()
+			}
+			g.killed = true
+		}
 	case maze.Treasure, maze.Treasure2:
 		m := g.maze
 		m.Map()[m.ExitPos()] = maze.Exit // place exit in the maze
@@ -371,6 +425,7 @@ func gameLoop(g *Game) {
 }
 
 func moveAllMazogs(g *Game) {
+	g.maze.InsertMazogs(g.mazogTable)
 }
 
 func movePlayer(g *Game, pos int) {
@@ -544,6 +599,7 @@ func chooseEntranceSide(g *Game) {
 	}
 
 	g.ChooseEntrance(dir)
+	g.maze.InsertMazogs(g.mazogTable) // Distance() in ChooseEntrance clears mazogs; restore them.
 
 	fillScreen(0x88)
 	displayView(g)

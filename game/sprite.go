@@ -21,7 +21,6 @@ func showSprites(m *maze.Maze, num int) {
 			case maze.Prisoner, maze.Prisoner2,
 				maze.Treasure, maze.Treasure2,
 				maze.Mazog, maze.Mazog2:
-				// toggle the maze code
 				area[index] = code + 0x80
 			}
 			sp, ok := sprites[code]
