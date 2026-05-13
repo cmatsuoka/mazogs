@@ -173,13 +173,39 @@ func whichGame(g *Game) int {
 func initialize(g *Game, level int) {
 	g.hasTreasure = false
 
+	// Assembly BASIC 6110-6114: print key controls and "maze being drawn"
+	// over the existing level confirmation background (wall tiles + level sprite).
+	graphics.PrintAt(14, 2, " USE KEYS  W A D AND X   OR ")
+	graphics.PrintAt(16, 2, " W S H AND J.  V=VIEW,Y=STOP")
+	graphics.PrintAt(21, 2, "the_maze_is_now_being_drawn_")
+
+	start := time.Now()
+
 	for i := 0; i < 10; i++ {
 		g.maze.Generate()
-		// Fetch the number of empty locations. Continue if the maze is complex enough.
 		if g.maze.CountEmpty() >= 1200 {
 			break
 		}
+		// Assembly BASIC 6158: maze not complex enough, signal redraw.
+		graphics.PrintAt(21, 2, " THE MAZE IS BEING REDRAWN  ")
 	}
+
+	// Keep the "being drawn" screen visible for at least 5 seconds total
+	// (ZX-81 generation took 5–10s; on modern hardware we pad to match).
+	// No extra delay is added if generation itself took longer.
+	for remaining := 5*time.Second - time.Since(start); remaining > 0; remaining = 5*time.Second - time.Since(start) {
+		graphics.ProcessEvents()
+		sleep := remaining
+		if sleep > 10*time.Millisecond {
+			sleep = 10*time.Millisecond
+		}
+		time.Sleep(sleep)
+	}
+
+	// Assembly BASIC 6298-6300: signal ready and wait for key press.
+	graphics.PrintAt(21, 2, " MAZE READY - PRESS ANY KEY ")
+	graphics.ClearKeys()
+	graphics.WaitKey()
 
 	g.maze.InsertEntrance()
 	g.mazogTable = g.maze.Populate()
