@@ -114,9 +114,9 @@ func showIntro(g *Game) {
 // whichGame shows the level selection screen and sets game flags on g.
 // The maze must be in IntroMaze state (set by showIntro) when called.
 func whichGame(g *Game) int {
-	p := g.maze.PlayerPos
 	for {
-		fillScreen(0x88)
+		fillScreen(0x80) // solid black, matches assembly BB subroutine (BASIC 6037: POKE 17370,128)
+		renderWallBackground()
 		graphics.PrintAt(1, 10, "WHICH GAME ?")
 		graphics.PrintAt(10, 5, "1. TRY IT OUT")
 		graphics.PrintAt(12, 5, "2. FACE A CHALLENGE")
@@ -125,9 +125,9 @@ func whichGame(g *Game) int {
 		graphics.WaitKey()
 		switch graphics.InKey() {
 		case "1":
-			fillScreen(0x00)
-			g.maze.Map()[p-128] = maze.PlayerWithTreasureLeft
-			showSprites(g.maze, 5)
+			fillScreen(0x80)
+			renderWallBackground()
+			sprites[maze.PlayerWithTreasureLeft].render(0, 2)
 			graphics.PrintAt(1, 11, "TRY IT OUT")
 			graphics.Present()
 			g.hasCountdown = false
@@ -136,9 +136,9 @@ func whichGame(g *Game) int {
 			g.slowDown = true
 			return levelEasy
 		case "2":
-			fillScreen(0x00)
-			g.maze.Map()[p-128] = maze.PlayerWithSwordRight
-			showSprites(g.maze, 5)
+			fillScreen(0x80)
+			renderWallBackground()
+			sprites[maze.PlayerWithSwordRight].render(0, 2)
 			graphics.PrintAt(1, 8, "FACE A CHALLENGE")
 			graphics.Present()
 			g.hasCountdown = true
@@ -147,13 +147,13 @@ func whichGame(g *Game) int {
 			g.slowDown = false
 			return levelMedium
 		case "3":
-			fillScreen(0x00)
+			fillScreen(0x80)
 			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
-			g.maze.Map()[p-128] = maze.PlayerStanding
-			g.maze.Map()[p-129] = maze.Mazog
-			g.maze.Map()[p-127] = maze.Mazog
+			renderWallBackground()
 			for i := 0; i < 10; i++ {
-				showSprites(g.maze, 5)
+				sprites[maze.PlayerStanding].render(0, 2)
+				sprites[maze.Mazog].render(0, 1)
+				sprites[maze.Mazog].render(0, 3)
 				graphics.Present()
 			}
 			g.hasCountdown = true

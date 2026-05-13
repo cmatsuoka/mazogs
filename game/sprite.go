@@ -46,6 +46,17 @@ func (sp sprite) render(r, c int) {
 	}
 }
 
+// renderWallBackground fills the entire 5×4 sprite grid with InternalWall tiles,
+// giving a clean wall background independent of the current maze state.
+func renderWallBackground() {
+	wall := sprites[maze.InternalWall]
+	for r := 0; r < 4; r++ {
+		for c := 0; c < 5; c++ {
+			wall.render(r, c)
+		}
+	}
+}
+
 var sprites = map[byte]sprite{
 
 	// |            |
