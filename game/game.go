@@ -51,6 +51,7 @@ type Game struct {
 	wayShownAt      time.Time
 	viewMode        bool
 	viewModeAt      time.Time
+	animIdleTicks   int       // counts 10ms idle polls; advances animation every animIdleTicksMax ticks
 	starved         bool
 	exited          bool
 	reportRequest   bool
@@ -59,6 +60,12 @@ type Game struct {
 	enteredFromLeft bool
 	moving          bool // true after the first step; resets when player stops
 }
+
+const (
+	idlePollMs       = 10  // ms per idle loop iteration
+	smallDelayMs     = 400 // ms per smallDelay (one player step)
+	animIdleTicksMax = smallDelayMs / idlePollMs // ticks before advancing animation when idle
+)
 
 func New() *Game {
 	maze := maze.New()
@@ -88,6 +95,7 @@ func showIntro(g *Game) {
 	animateTitle := func(num int) (keyPressed bool) {
 		// scroll "MAZOGS" down the right hand side of the screen
 		for i := 4; i <= 21; i++ {
+			g.tick()
 			showSprites(g.maze, num)
 			graphics.PrintAt(i, 25, "MAZOGS")
 			if graphics.InKey() != "" {
@@ -295,15 +303,22 @@ func gameLoop(g *Game) {
 		return
 	case "":
 		// No key held — show idle sprite and poll quickly so a new press
-		// is picked up immediately.
+		// is picked up immediately. Advance animation at the same ~400ms
+		// cadence as player steps so sprites don't freeze when idle.
 		g.moving = false
+		g.animIdleTicks++
+		if g.animIdleTicks >= animIdleTicksMax {
+			g.animIdleTicks = 0
+			advanceAnimation(g.maze)
+		}
 		showPlayerStanding(g)
 		graphics.ProcessEvents()
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(idlePollMs * time.Millisecond)
 		moveAllMazogs(g)
 		graphics.Present()
 		return
 	default:
+		g.tick()
 		showPlayerStanding(g)
 		smallDelay()
 		moveAllMazogs(g)
@@ -316,7 +331,9 @@ func gameLoop(g *Game) {
 	switch code {
 	case maze.InternalWall:
 		g.moving = false
+		g.tick()
 		showPlayerStanding(g)
+		smallDelay()
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
@@ -363,13 +380,20 @@ func gameLoop(g *Game) {
 			g.hasSword = false
 			g.moving = false
 			graphics.ClearKeys() // discard key held during fight; require fresh press
+			g.tick()
 			showPlayerStanding(g)
 		} else {
-			// Mazog wins: 25 rapid blink cycles, then player is killed.
+			// Mazog wins: 25 rapid blink cycles (~90ms each = ~2.25s), then player is killed.
 			g.maze.Map()[pos] = maze.Mazog
 			for i := 0; i < 25; i++ {
+				g.tick()
 				showSprites(g.maze, 5)
 				graphics.Present()
+				t0 := time.Now()
+				for time.Since(t0) < 90*time.Millisecond {
+					graphics.ProcessEvents()
+					time.Sleep(idlePollMs * time.Millisecond)
+				}
 			}
 			g.killed = true
 		}
@@ -384,9 +408,11 @@ func gameLoop(g *Game) {
 		}
 		g.hasTreasure = true
 		g.moving = false
+		g.tick()
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		smallDelay()
 	case maze.Prisoner, maze.Prisoner2:
+		g.tick()
 		showPlayerStanding(g)
 		if g.mazogsMove {
 			g.maze.Map()[pos] = maze.InternalWall
@@ -401,6 +427,7 @@ func gameLoop(g *Game) {
 		smallDelay()
 	case maze.Sword:
 		m := g.maze
+		g.tick()
 		if g.hasSword {
 			// already armed, treat as a wall
 			showPlayerStanding(g)
@@ -426,6 +453,13 @@ func gameLoop(g *Game) {
 
 func moveAllMazogs(g *Game) {
 	g.maze.InsertMazogs(g.mazogTable)
+}
+
+// tick advances animation by one step and resets the idle animation counter
+// so the idle loop doesn't fire again immediately after an action.
+func (g *Game) tick() {
+	advanceAnimation(g.maze)
+	g.animIdleTicks = 0
 }
 
 func movePlayer(g *Game, pos int) {
@@ -500,6 +534,7 @@ func movePlayer(g *Game, pos int) {
 	if g.starved {
 	}
 
+	g.tick()
 	showSprites(g.maze, 5)
 }
 
@@ -680,9 +715,9 @@ func smallDelay() {
 	// A physically held key (keyValue) still works for continuous movement.
 	graphics.ClearLatch()
 	t0 := time.Now()
-	for time.Since(t0) < 400*time.Millisecond {
+	for time.Since(t0) < smallDelayMs*time.Millisecond {
 		graphics.ProcessEvents()
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(idlePollMs * time.Millisecond)
 	}
 }
 

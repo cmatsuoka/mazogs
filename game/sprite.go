@@ -5,8 +5,28 @@ import (
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
-// showSprites toggles maze codes and displays a screenful of sprites around the
-// player location pos. A maximum of num columns of sprites are displayed.
+// advanceAnimation toggles animated maze codes by one step. Call this once
+// per game tick (player step or equivalent action) to drive all sprite
+// animation at the player-movement cadence.
+func advanceAnimation(m *maze.Maze) {
+	area := m.Map()
+	pos := m.PlayerPos - 2*maze.MazeColumns - 2
+	for c := 0; c < 5; c++ {
+		for r := 0; r < 4; r++ {
+			index := pos + r*maze.MazeColumns + c
+			switch area[index] {
+			case maze.Prisoner, maze.Prisoner2,
+				maze.Treasure, maze.Treasure2,
+				maze.Mazog, maze.Mazog2:
+				area[index] += 0x80
+			}
+		}
+	}
+}
+
+// showSprites displays a screenful of sprites around the player location.
+// A maximum of num columns of sprites are displayed. Does not advance
+// animation state — call advanceAnimation first when a tick has occurred.
 func showSprites(m *maze.Maze, num int) {
 	area := m.Map()
 	pos := m.PlayerPos - 2*maze.MazeColumns - 2
@@ -17,12 +37,6 @@ func showSprites(m *maze.Maze, num int) {
 		for r := 0; r < 4; r++ {
 			index := pos + r*maze.MazeColumns + c
 			code := area[index]
-			switch code {
-			case maze.Prisoner, maze.Prisoner2,
-				maze.Treasure, maze.Treasure2,
-				maze.Mazog, maze.Mazog2:
-				area[index] = code + 0x80
-			}
 			sp, ok := sprites[code]
 			if ok {
 				sp.render(r, c)
