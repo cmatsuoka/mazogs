@@ -75,13 +75,15 @@ func New() *Game {
 }
 
 func (g *Game) Run() error {
-	showIntro(g)
-	level := whichGame(g)
-	initialize(g, level)
-	chooseEntranceSide(g)
-	situationReport(g)
-	play(g)
-	return nil
+	for {
+		graphics.ClearKeys()
+		showIntro(g)
+		level := whichGame(g)
+		initialize(g, level)
+		chooseEntranceSide(g)
+		situationReport(g)
+		play(g)
+	}
 }
 
 // showIntro displays the animated title screen until a key is pressed.
@@ -286,7 +288,7 @@ func play(g *Game) {
 		ep := g.maze.ExitPos()
 		area := g.maze.Map()
 		area[ep-maze.MazeColumns] = maze.Empty // clear exit opening above
-		area[ep] = maze.PlayerStanding          // companion at exit cell
+		area[ep] = maze.PlayerStanding         // companion at exit cell
 		if g.enteredFromLeft {
 			// BASIC 3180-3196: entered from left, player is to the left.
 			area[ep-1] = maze.PlayerWithTreasure
