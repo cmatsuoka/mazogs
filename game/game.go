@@ -63,7 +63,7 @@ type Game struct {
 
 const (
 	idlePollMs       = 20                        // ms per idle loop iteration
-	smallDelayMs     = 190                       // ms per smallDelay (one player step)
+	smallDelayMs     = 200                       // ms per smallDelay (one player step)
 	animIdleTicksMax = smallDelayMs / idlePollMs // ticks before advancing animation when idle
 )
 
@@ -98,10 +98,17 @@ func showIntro(g *Game) {
 			g.tick()
 			showSprites(g.maze, num)
 			graphics.PrintAt(i, 25, "MAZOGS")
-			if graphics.InKey() != "" {
-				return true
+			// Use the same idle-loop constants as in-game so that changing
+			// animIdleTicksMax or idlePollMs affects both screens equally.
+			// Clear the latch so each scroll step requires a fresh key press.
+			graphics.ClearLatch()
+			for tick := 0; tick < animIdleTicksMax; tick++ {
+				graphics.ProcessEvents()
+				if graphics.InKey() != "" {
+					return true
+				}
+				time.Sleep(idlePollMs * time.Millisecond)
 			}
-			smallDelay()
 		}
 		showSprites(g.maze, 5)
 		return false
