@@ -51,7 +51,7 @@ type Game struct {
 	wayShownAt      time.Time
 	viewMode        bool
 	viewModeAt      time.Time
-	animIdleTicks   int       // counts 10ms idle polls; advances animation every animIdleTicksMax ticks
+	animIdleTicks   int // counts 10ms idle polls; advances animation every animIdleTicksMax ticks
 	starved         bool
 	exited          bool
 	reportRequest   bool
@@ -62,8 +62,8 @@ type Game struct {
 }
 
 const (
-	idlePollMs       = 10  // ms per idle loop iteration
-	smallDelayMs     = 400 // ms per smallDelay (one player step)
+	idlePollMs       = 20                        // ms per idle loop iteration
+	smallDelayMs     = 190                       // ms per smallDelay (one player step)
 	animIdleTicksMax = smallDelayMs / idlePollMs // ticks before advancing animation when idle
 )
 
@@ -206,7 +206,7 @@ func initialize(g *Game, level int) {
 		graphics.ProcessEvents()
 		sleep := remaining
 		if sleep > 10*time.Millisecond {
-			sleep = 10*time.Millisecond
+			sleep = 10 * time.Millisecond
 		}
 		time.Sleep(sleep)
 	}
