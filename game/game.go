@@ -64,6 +64,7 @@ type Game struct {
 const (
 	idlePollMs       = 20                        // ms per idle loop iteration
 	smallDelayMs     = 200                       // ms per smallDelay (one player step)
+	prisonerDelayMs  = 700                       // ms before prisoner reveals the route
 	animIdleTicksMax = smallDelayMs / idlePollMs // ticks before advancing animation when idle
 )
 
@@ -438,6 +439,7 @@ func gameLoop(g *Game) {
 	case maze.Prisoner, maze.Prisoner2:
 		g.tick()
 		showPlayerStanding(g)
+		prisonerAnswerDelay()
 		if g.mazogsMove {
 			g.maze.Map()[pos] = maze.InternalWall
 		}
@@ -856,6 +858,16 @@ func smallDelay() {
 	graphics.ClearLatch()
 	t0 := time.Now()
 	for time.Since(t0) < smallDelayMs*time.Millisecond {
+		graphics.ProcessEvents()
+		time.Sleep(idlePollMs * time.Millisecond)
+	}
+}
+
+// prisonerAnswerDelay simulates the original route-computation pause before
+// the prisoner answer becomes visible.
+func prisonerAnswerDelay() {
+	t0 := time.Now()
+	for time.Since(t0) < prisonerDelayMs*time.Millisecond {
 		graphics.ProcessEvents()
 		time.Sleep(idlePollMs * time.Millisecond)
 	}
