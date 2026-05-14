@@ -615,7 +615,7 @@ func (m *Maze) Populate() (mazogTable []int) {
 		p := func() int {
 			for {
 				p := randomMazePos()
-				if m.area[p] == Empty && m.area[p] != ExternalWall && m.area[p+1] != ExternalWall {
+				if m.area[p] == Empty && m.area[p-1] != ExternalWall && m.area[p+1] != ExternalWall {
 					return p
 				}
 			}
