@@ -418,64 +418,7 @@ func gameLoop(g *Game) {
 	case maze.Mazog, maze.Mazog2:
 		// Assembly L495C: credit movesKill before the fight (win or lose).
 		g.movesRemaining += g.movesKill
-
-		// Assembly L4E2A: leave trail at old position, move player to mazog's cell.
-		g.maze.Map()[g.maze.PlayerPos] = maze.Trail
-		g.maze.PlayerPos = pos
-
-		// 7-iteration fight animation: Fighting1, Mazog, Fighting2, Mazog2, Fighting3, Mazog.
-		// On real ZX-81 each render takes ~90ms; we replicate that here.
-		// Events are pumped during each sleep so KEYUP is processed (prevents
-		// the held key from triggering a movement step after the fight ends).
-		for i := 0; i < 7; i++ {
-			for _, frame := range []byte{
-				maze.Fighting1, maze.Mazog,
-				maze.Fighting2, maze.Mazog2,
-				maze.Fighting3, maze.Mazog,
-			} {
-				g.maze.Map()[pos] = frame
-				showSprites(g.maze, 5)
-				graphics.Present()
-				t0 := time.Now()
-				for time.Since(t0) < 90*time.Millisecond {
-					graphics.ProcessEvents()
-					time.Sleep(10 * time.Millisecond)
-				}
-			}
-		}
-
-		// Assembly L4E5C: sword wins unconditionally; no sword = 50/50 random.
-		// Assembly L4E83 uses a 4-way random split (L40B4) and wins on quarters 1 & 3.
-		quarter := rand.Intn(4) + 1 // 1, 2, 3, or 4
-		won := g.hasSword || quarter == 1 || quarter == 3
-		if won {
-			// Find this mazog in the table by position and mark it dead.
-			for i, mp := range g.mazogTable {
-				if mp == pos {
-					g.mazogTable[i] = 0xffff
-					break
-				}
-			}
-			g.hasSword = false
-			g.moving = false
-			graphics.ClearKeys() // discard key held during fight; require fresh press
-			g.tick()
-			showPlayerStanding(g)
-		} else {
-			// Mazog wins: 25 rapid blink cycles (~90ms each = ~2.25s), then player is killed.
-			g.maze.Map()[pos] = maze.Mazog
-			for i := 0; i < 25; i++ {
-				g.tick()
-				showSprites(g.maze, 5)
-				graphics.Present()
-				t0 := time.Now()
-				for time.Since(t0) < 90*time.Millisecond {
-					graphics.ProcessEvents()
-					time.Sleep(idlePollMs * time.Millisecond)
-				}
-			}
-			g.killed = true
-		}
+		fightMazog(g, pos)
 	case maze.Treasure, maze.Treasure2:
 		m := g.maze
 		m.Map()[m.ExitPos()] = maze.Exit // place exit in the maze
@@ -534,7 +477,120 @@ func gameLoop(g *Game) {
 }
 
 func moveAllMazogs(g *Game) {
+	// Assembly L4EE7: restore all mazog cells (TraceRoute/Distance wipes them).
 	g.maze.InsertMazogs(g.mazogTable)
+
+	// Assembly L4B0C: the entire mazog loop is skipped when there is no
+	// countdown timer (TryItOut mode). Only run when g.mazogsMove is true.
+	if !g.mazogsMove {
+		return
+	}
+
+	area := g.maze.Map()
+	for i, mazogPos := range g.mazogTable {
+		if mazogPos > 0xff00 { // dead sentinel 0xffff
+			continue
+		}
+
+		// Assembly L4F6E: check horizontal adjacency only — mazogs never
+		// initiate combat from above or below.
+		playerPos := g.maze.PlayerPos
+		if mazogPos-1 == playerPos || mazogPos+1 == playerPos {
+			// Assembly L4FE3: mazog-initiated fight. movesKill is NOT
+			// credited here (only credited on player-initiated path, L495C).
+			fightMazog(g, mazogPos)
+			if g.killed {
+				return
+			}
+			continue
+		}
+
+		// Assembly L4FC0-L4FC9: pick a random direction using L40B4 4-way
+		// split: 1=left, 2=right, 3=down, 4=up.
+		quarter := rand.Intn(4) + 1
+		var newPos int
+		switch quarter {
+		case 1:
+			newPos = mazogPos - 1
+		case 2:
+			newPos = mazogPos + 1
+		case 3:
+			newPos = mazogPos + maze.MazeColumns
+		case 4:
+			newPos = mazogPos - maze.MazeColumns
+		}
+
+		// Assembly L4FCF: move only into Empty, Trail, or ThisWay cells.
+		code := area[newPos]
+		if code == maze.Empty || code == maze.Trail || code == maze.ThisWay {
+			area[newPos] = maze.Mazog
+			area[mazogPos] = maze.Empty
+			g.mazogTable[i] = newPos
+		}
+	}
+}
+
+// fightMazog performs the fight sequence between the player and a mazog at
+// mazogPos. Assembly L4E2A-L4EA3. The caller is responsible for crediting
+// movesKill when appropriate (player-initiated only, Assembly L495C).
+func fightMazog(g *Game, mazogPos int) {
+	// Assembly L4E2A: leave trail at old position, move player to mazog's cell.
+	g.maze.Map()[g.maze.PlayerPos] = maze.Trail
+	g.maze.PlayerPos = mazogPos
+
+	// 7-iteration fight animation: Fighting1, Mazog, Fighting2, Mazog2, Fighting3, Mazog.
+	// On real ZX-81 each render takes ~90ms; we replicate that here.
+	// Events are pumped during each sleep so KEYUP is processed.
+	for i := 0; i < 7; i++ {
+		for _, frame := range []byte{
+			maze.Fighting1, maze.Mazog,
+			maze.Fighting2, maze.Mazog2,
+			maze.Fighting3, maze.Mazog,
+		} {
+			g.maze.Map()[mazogPos] = frame
+			showSprites(g.maze, 5)
+			graphics.Present()
+			t0 := time.Now()
+			for time.Since(t0) < 90*time.Millisecond {
+				graphics.ProcessEvents()
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+	}
+
+	// Assembly L4E5C: sword wins unconditionally; no sword = 50/50 random.
+	// Assembly L4E83 uses a 4-way random split (L40B4) and wins on quarters 1 & 3.
+	quarter := rand.Intn(4) + 1 // 1, 2, 3, or 4
+	won := g.hasSword || quarter == 1 || quarter == 3
+	if won {
+		// Find this mazog in the table by position and mark it dead.
+		for i, mp := range g.mazogTable {
+			if mp == mazogPos {
+				g.mazogTable[i] = 0xffff
+				break
+			}
+		}
+		g.hasSword = false
+		g.moving = false
+		graphics.ClearKeys()
+		g.tick()
+		showPlayerStanding(g)
+	} else {
+		// Assembly L4E97: mazog wins — 25 rapid blink cycles (~90ms each),
+		// then player is killed.
+		g.maze.Map()[mazogPos] = maze.Mazog
+		for i := 0; i < 25; i++ {
+			g.tick()
+			showSprites(g.maze, 5)
+			graphics.Present()
+			t0 := time.Now()
+			for time.Since(t0) < 90*time.Millisecond {
+				graphics.ProcessEvents()
+				time.Sleep(idlePollMs * time.Millisecond)
+			}
+		}
+		g.killed = true
+	}
 }
 
 // tick advances animation by one step and resets the idle animation counter
