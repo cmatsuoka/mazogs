@@ -278,8 +278,45 @@ func play(g *Game) {
 			graphics.Present()
 			smallDelay()
 		}
+	} else if g.exited {
+		// BASIC 3150-3196: player exited with the treasure.
+		// Place companion and player-with-treasure at the exit cell, then
+		// flash "welcome back" 60 times. Layout depends on which side of the
+		// maze the player entered from (g.enteredFromLeft).
+		ep := g.maze.ExitPos()
+		area := g.maze.Map()
+		area[ep-maze.MazeColumns] = maze.Empty // clear exit opening above
+		area[ep] = maze.PlayerStanding          // companion at exit cell
+		if g.enteredFromLeft {
+			// BASIC 3180-3196: entered from left, player is to the left.
+			area[ep-1] = maze.PlayerWithTreasure
+			showSprites(g.maze, 5)
+			graphics.PrintAt(10, 20, "EXIT")
+			for i := 0; i < 60; i++ {
+				if i%2 == 0 {
+					graphics.PrintAt(18, 13, "welcome_back")
+				} else {
+					graphics.PrintAt(18, 13, "WELCOME BACK")
+				}
+				graphics.Present()
+				smallDelay()
+			}
+		} else {
+			// BASIC 3160-3178: entered from right, player is to the right.
+			area[ep+1] = maze.PlayerWithTreasure
+			showSprites(g.maze, 5)
+			graphics.PrintAt(10, 8, "EXIT")
+			for i := 0; i < 60; i++ {
+				if i%2 == 0 {
+					graphics.PrintAt(18, 7, "welcome_back")
+				} else {
+					graphics.PrintAt(18, 7, "WELCOME BACK")
+				}
+				graphics.Present()
+				smallDelay()
+			}
+		}
 	}
-	// BASIC 3200+: wait for a key press before returning to the title.
 	graphics.WaitKey()
 }
 
@@ -487,6 +524,9 @@ func gameLoop(g *Game) {
 		g.moving = false
 		smallDelay()
 	case maze.Exit:
+		// BASIC 3014 / Assembly L4BDF: player reached the exit with the treasure.
+		g.exited = true
+		return
 	}
 
 	moveAllMazogs(g)
