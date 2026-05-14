@@ -13,6 +13,8 @@ func deadMazogTable() []int {
 	return table
 }
 
+// TestPopulateMazogsNotAdjacentToExternalWall checks that populated mazogs are
+// in-bounds and never placed beside an external wall.
 func TestPopulateMazogsNotAdjacentToExternalWall(t *testing.T) {
 	// Regression for mazog placement: candidates must be empty and not
 	// adjacent to an external wall on either side (assembly L4EC9).
@@ -39,6 +41,8 @@ func TestPopulateMazogsNotAdjacentToExternalWall(t *testing.T) {
 	}
 }
 
+// TestInsertMazogsSkipsDeadEntries checks that dead table entries are ignored
+// while live entries are restored as mazogs.
 func TestInsertMazogsSkipsDeadEntries(t *testing.T) {
 	m := New()
 	constructMazeArea(m)
@@ -63,6 +67,8 @@ func TestInsertMazogsSkipsDeadEntries(t *testing.T) {
 	}
 }
 
+// TestInsertMazogsPreservesMazog2 checks that existing Mazog2 cells are not
+// overwritten when restoring mazogs from the table.
 func TestInsertMazogsPreservesMazog2(t *testing.T) {
 	m := New()
 	constructMazeArea(m)
