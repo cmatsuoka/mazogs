@@ -124,7 +124,7 @@ func showIntro(g *Game) {
 // The maze must be in IntroMaze state (set by showIntro) when called.
 func whichGame(g *Game) int {
 	for {
-		fillScreen(0x80) // solid black, matches assembly BB subroutine (BASIC 6037: POKE 17370,128)
+		fillScreen(0x80) // solid black, matches Assembly BB subroutine (BASIC 6037: POKE 17370,128)
 		renderWallBackground()
 		sprites[maze.Mazog].render(0, 2) // BASIC 2082: POKE N-128,189 then USR 18602 toggles to eyes-open
 		graphics.PrintAt(1, 10, "WHICH GAME ?")
@@ -182,7 +182,7 @@ func whichGame(g *Game) int {
 func initialize(g *Game, level int) {
 	g.hasTreasure = false
 
-	// Assembly BASIC 6110-6114: print key controls and "maze being drawn"
+	// BASIC 6110-6114: print key controls and "maze being drawn"
 	// over the existing level confirmation background (wall tiles + level sprite).
 	graphics.PrintAt(14, 2, " USE KEYS  W A D AND X   OR ")
 	graphics.PrintAt(16, 2, " W S H AND J.  V=VIEW,Y=STOP")
@@ -195,14 +195,14 @@ func initialize(g *Game, level int) {
 		if g.maze.CountEmpty() >= 1200 {
 			break
 		}
-		// Assembly BASIC 6158: maze not complex enough, signal redraw.
+		// BASIC 6158: maze not complex enough, signal redraw.
 		graphics.PrintAt(21, 2, " THE MAZE IS BEING REDRAWN  ")
 	}
 
 	// Keep the "being drawn" screen visible for at least 5 seconds total
 	// (ZX-81 generation took 5–10s; on modern hardware we pad to match).
 	// No extra delay is added if generation itself took longer.
-	for remaining := 5*time.Second - time.Since(start); remaining > 0; remaining = 5*time.Second - time.Since(start) {
+	for remaining := 3*time.Second - time.Since(start); remaining > 0; remaining = 5*time.Second - time.Since(start) {
 		graphics.ProcessEvents()
 		sleep := remaining
 		if sleep > 10*time.Millisecond {
@@ -211,7 +211,7 @@ func initialize(g *Game, level int) {
 		time.Sleep(sleep)
 	}
 
-	// Assembly BASIC 6298-6300: signal ready and wait for key press.
+	// BASIC 6298-6300: signal ready and wait for key press.
 	graphics.PrintAt(21, 2, " MAZE READY - PRESS ANY KEY ")
 	graphics.ClearKeys()
 	graphics.WaitKey()
@@ -238,7 +238,42 @@ func play(g *Game) {
 	graphics.ClearKeys() // discard any key state from previous screens
 	for {
 		gameLoop(g)
+		if g.killed || g.starved || g.exited {
+			break
+		}
+		if g.reportRequest {
+			g.reportRequest = false
+			situationReport(g)
+		}
 	}
+
+	// BASIC 3012-3040: show end-game message based on cause of death/exit.
+	fillScreen(0x80)
+	if g.starved {
+		// BASIC 3118-3124: flash "YOU HAVE STARVED TO DEATH" 35 times.
+		for i := 0; i < 35; i++ {
+			if i%2 == 0 {
+				graphics.PrintAt(10, 4, "YOU HAVE STARVED TO DEATH")
+			} else {
+				graphics.PrintAt(10, 4, "you have starved to death")
+			}
+			graphics.Present()
+			smallDelay()
+		}
+	} else if g.killed {
+		// BASIC 3030-3034: flash "death  to all treasure seekers" 40 times.
+		for i := 0; i < 40; i++ {
+			if i%2 == 0 {
+				graphics.PrintAt(18, 1, "death__to_all_treasure_seekers")
+			} else {
+				graphics.PrintAt(18, 1, "DEATH  TO ALL TREASURE SEEKERS")
+			}
+			graphics.Present()
+			smallDelay()
+		}
+	}
+	// BASIC 3200+: wait for a key press before returning to the title.
+	graphics.WaitKey()
 }
 
 func gameLoop(g *Game) {
@@ -565,7 +600,7 @@ func decrementTimer(g *Game) {
 // displayView renders a 16×16 cell window of raw maze codes centred on the
 // player, starting at screen position (row=4, col=8). Cells outside the maze
 // bounds are shown as InternalWall. This mirrors the ZX-81 View routine at
-// L517C.
+// Assembly L517C.
 func displayView(g *Game) {
 	const (
 		viewRows  = 16
