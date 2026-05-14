@@ -85,6 +85,7 @@ func ClearLatch() {
 // context transitions (e.g. game start) so held keys from a previous screen
 // don't carry over into the new context.
 func ClearKeys() {
+	keyPressed = false
 	keyValue = ""
 	keyLatch = ""
 }
