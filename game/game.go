@@ -568,10 +568,13 @@ func fightMazog(g *Game, mazogPos int) {
 	won := g.hasSword || quarter == 1 || quarter == 3
 	if won {
 		// Find this mazog in the table by position and mark it dead.
+		// Unlike the assembly (L4E6B-L4E7B) which stops at the first match,
+		// we kill all entries at this position. The original RNG (256 slots
+		// for 38 mazogs) makes duplicate placements very likely, and leaving
+		// a surviving duplicate causes InsertMazogs to respawn the mazog.
 		for i, mp := range g.mazogTable {
 			if mp == mazogPos {
 				g.mazogTable[i] = 0xffff
-				break
 			}
 		}
 		g.hasSword = false
