@@ -272,8 +272,15 @@ func play(g *Game) {
 			stepDelay()
 		}
 	} else if g.killed {
-		// BASIC 3030-3034: flash "death  to all treasure seekers" 40 times.
+		// BASIC 3026-3034: fill screen black, draw sprites (showing the
+		// mazog that killed the player), then flash the death message while
+		// continuing to animate the scene.
+		advanceAnimation(g.maze)
+		showSprites(g.maze, 5)
+		graphics.Present()
 		for i := 0; i < 40; i++ {
+			advanceAnimation(g.maze)
+			showSprites(g.maze, 5)
 			if i%2 == 0 {
 				graphics.PrintAt(18, 1, "death__to_all_treasure_seekers")
 			} else {
