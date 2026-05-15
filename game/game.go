@@ -579,7 +579,10 @@ func fightMazog(g *Game, mazogPos int) {
 		}
 		g.hasSword = false
 		g.moving = false
-		graphics.ClearKeys()
+		// Only clear the latch (buffered presses during the fight animation)
+		// so that keyValue (the physically held key) is preserved and
+		// continuous movement resumes without requiring a re-press.
+		graphics.ClearLatch()
 		g.tick()
 		showPlayerStanding(g)
 	} else {

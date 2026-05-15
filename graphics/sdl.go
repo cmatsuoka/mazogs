@@ -107,7 +107,15 @@ func ProcessEvents() {
 				keyValue = string(kev.Keysym.Sym)
 				keyLatch = keyValue
 			} else {
-				keyValue = ""
+				// Only clear keyValue if the released key is the one
+				// currently tracked. This prevents an unrelated key
+				// release (modifier tap, X11 repeat artifact) from
+				// interrupting a held movement key — matching the
+				// ZX-81 LAST_K behaviour which always reflects the
+				// physical keyboard state.
+				if keyValue == string(kev.Keysym.Sym) {
+					keyValue = ""
+				}
 			}
 		}
 	}
