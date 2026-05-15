@@ -62,11 +62,18 @@ type Game struct {
 }
 
 const (
-	idlePollMs       = 20                        // ms per idle loop iteration
-	stepDelayMs      = 240                       // ms per step during continuous walking
-	firstStepDelayMs = 100                       // ms after the first step; long enough for a single-step tap
-	prisonerDelayMs  = 700                       // ms before prisoner reveals the route
+	idlePollMs       = 20                       // ms per idle loop iteration
+	stepDelayMs      = 240                      // ms per step during continuous walking
+	firstStepDelayMs = 100                      // ms after the first step; long enough for a single-step tap
+	prisonerDelayMs  = 700                      // ms before prisoner reveals the route
 	animIdleTicksMax = stepDelayMs / idlePollMs // ticks before advancing animation when idle
+
+	// ZX-81 frame-based timeouts. The original uses the FRAMES counter
+	// (decrementing at 50Hz PAL) reset to $FFFF; timeout fires when the
+	// high byte reaches a threshold.
+	zx81FrameMs          = 20    // ZX-81 PAL frame period (1000/50)
+	thisWayTimeoutFrames = 0x300 // high byte $FF->$FC = 768 frames
+	viewTimeoutFrames    = 0x100 // high byte $FF->$FE = 256 frames
 )
 
 func New() *Game {
@@ -336,16 +343,17 @@ func gameLoop(g *Game) {
 
 	if g.wayShown {
 		// The assembly resets FRAMES to $FFFF and clears when the high byte
-		// reaches $FC (~15 seconds at 50Hz). Use a 15-second timeout here.
-		if time.Since(g.wayShownAt) >= 15360*time.Millisecond {
+		// reaches $FC, i.e. after $300 frames (768 * 20ms = 15.36s).
+		if time.Since(g.wayShownAt) >= thisWayTimeoutFrames*zx81FrameMs*time.Millisecond {
 			g.maze.ClearMaze()
 			g.wayShown = false
 		}
 	}
 
 	if g.viewMode {
-		// Has the view timeout expired, i.e. after 5.12 seconds?
-		if time.Since(g.viewModeAt) >= 5120*time.Millisecond {
+		// Has the view timeout expired? Assembly checks high byte $FF->$FE,
+		// i.e. $100 frames (256 * 20ms = 5.12s).
+		if time.Since(g.viewModeAt) >= viewTimeoutFrames*zx81FrameMs*time.Millisecond {
 			g.viewMode = false
 			fillScreen(0x88) // restore game background before normal rendering
 		} else {
@@ -718,7 +726,7 @@ func decrementTimer(g *Game) {
 	g.movesRemaining--
 }
 
-// displayView renders a 16×16 cell window of raw maze codes centred on the
+// displayView renders a 16*16 cell window of raw maze codes centred on the
 // player, starting at screen position (row=4, col=8). Cells outside the maze
 // bounds are shown as InternalWall. This mirrors the ZX-81 View routine at
 // Assembly L517C.
