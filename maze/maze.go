@@ -529,6 +529,9 @@ func (m *Maze) InsertEntrance() {
 		p = p0 + 1
 	}
 	m.PlayerPos = startPos
+	// Write the player code into the maze so it appears in the mini-map
+	// view during entrance selection, matching the original assembly (L5082).
+	m.area[startPos] = PlayerStanding
 }
 
 // Animate updates the animation for prisoners, treasure and mazog.
