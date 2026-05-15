@@ -63,9 +63,10 @@ type Game struct {
 
 const (
 	idlePollMs       = 20                        // ms per idle loop iteration
-	smallDelayMs     = 200                       // ms per smallDelay (one player step)
+	stepDelayMs      = 240                       // ms per step during continuous walking
+	firstStepDelayMs = 100                       // ms after the first step; long enough for a single-step tap
 	prisonerDelayMs  = 700                       // ms before prisoner reveals the route
-	animIdleTicksMax = smallDelayMs / idlePollMs // ticks before advancing animation when idle
+	animIdleTicksMax = stepDelayMs / idlePollMs // ticks before advancing animation when idle
 )
 
 func New() *Game {
@@ -91,7 +92,7 @@ func (g *Game) Run() error {
 func showIntro(g *Game) {
 	g.maze.IntroMaze()
 	fillScreen(0x88)
-	smallDelay()
+	stepDelay()
 	g.maze.PlayerPos = 470
 	showSprites(g.maze, 4)
 
@@ -268,7 +269,7 @@ func play(g *Game) {
 				graphics.PrintAt(10, 4, "you have starved to death")
 			}
 			graphics.Present()
-			smallDelay()
+			stepDelay()
 		}
 	} else if g.killed {
 		// BASIC 3030-3034: flash "death  to all treasure seekers" 40 times.
@@ -279,7 +280,7 @@ func play(g *Game) {
 				graphics.PrintAt(18, 1, "DEATH  TO ALL TREASURE SEEKERS")
 			}
 			graphics.Present()
-			smallDelay()
+			stepDelay()
 		}
 	} else if g.exited {
 		// BASIC 3150-3196: player exited with the treasure.
@@ -302,7 +303,7 @@ func play(g *Game) {
 					graphics.PrintAt(18, 13, "WELCOME BACK")
 				}
 				graphics.Present()
-				smallDelay()
+				stepDelay()
 			}
 		} else {
 			// BASIC 3160-3178: entered from right, player is to the right.
@@ -316,7 +317,7 @@ func play(g *Game) {
 					graphics.PrintAt(18, 7, "WELCOME BACK")
 				}
 				graphics.Present()
-				smallDelay()
+				stepDelay()
 			}
 		}
 	}
@@ -341,10 +342,10 @@ func gameLoop(g *Game) {
 			g.viewMode = false
 			fillScreen(0x88) // restore game background before normal rendering
 		} else {
-			// Use smallDelay (not time.Sleep) so SDL events are pumped,
+			// Use stepDelay (not time.Sleep) so SDL events are pumped,
 			// ensuring the KEYUP for 'V' is processed before the timer
 			// fires and control returns to InKey().
-			smallDelay()
+			stepDelay()
 			displayView(g)
 			moveAllMazogs(g)
 			graphics.Present()
@@ -402,7 +403,7 @@ func gameLoop(g *Game) {
 	default:
 		g.tick()
 		showPlayerStanding(g)
-		smallDelay()
+		stepDelay()
 		moveAllMazogs(g)
 		graphics.Present()
 		return
@@ -415,7 +416,7 @@ func gameLoop(g *Game) {
 		g.moving = false
 		g.tick()
 		showPlayerStanding(g)
-		smallDelay()
+		stepDelay()
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
@@ -435,7 +436,7 @@ func gameLoop(g *Game) {
 		g.moving = false
 		g.tick()
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
-		smallDelay()
+		stepDelay()
 	case maze.Prisoner, maze.Prisoner2:
 		g.tick()
 		showPlayerStanding(g)
@@ -450,7 +451,7 @@ func gameLoop(g *Game) {
 		g.wayShown = true
 		g.wayShownAt = time.Now()
 		g.moving = false
-		smallDelay()
+		stepDelay()
 	case maze.Sword:
 		m := g.maze
 		g.tick()
@@ -469,7 +470,7 @@ func gameLoop(g *Game) {
 			showPlayerStanding(g)
 		}
 		g.moving = false
-		smallDelay()
+		stepDelay()
 	case maze.Exit:
 		// BASIC 3014 / Assembly L4BDF: player reached the exit with the treasure.
 		g.exited = true
@@ -669,13 +670,13 @@ func movePlayer(g *Game, pos int) {
 
 	decrementTimer(g)
 	if g.moving {
-		smallDelay()
+		stepDelay()
 	} else {
-		shortDelay()
+		firstStepDelay()
 		g.moving = true
 	}
 	if g.slowDown {
-		smallDelay()
+		stepDelay()
 	}
 
 	// Did the player starve to death?
@@ -858,12 +859,12 @@ func fillScreen(code byte) {
 	graphics.Present()
 }
 
-func smallDelay() {
+func stepDelay() {
 	// Clear the latch so the next move requires a fresh key press.
 	// A physically held key (keyValue) still works for continuous movement.
 	graphics.ClearLatch()
 	t0 := time.Now()
-	for time.Since(t0) < smallDelayMs*time.Millisecond {
+	for time.Since(t0) < stepDelayMs*time.Millisecond {
 		graphics.ProcessEvents()
 		time.Sleep(idlePollMs * time.Millisecond)
 	}
@@ -879,13 +880,15 @@ func prisonerAnswerDelay() {
 	}
 }
 
-// shortDelay is used after the first step of a movement sequence to give a
-// snappier start-of-walking feel. Subsequent steps use the full smallDelay.
-func shortDelay() {
+// firstStepDelay is used after the first step of a movement sequence. It is
+// long enough for the player to release the key when only a single step
+// is intended, while still feeling snappier than the full stepDelay used
+// for subsequent (continuous) steps.
+func firstStepDelay() {
 	graphics.ClearLatch()
 	t0 := time.Now()
-	for time.Since(t0) < 50*time.Millisecond {
+	for time.Since(t0) < firstStepDelayMs*time.Millisecond {
 		graphics.ProcessEvents()
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(idlePollMs * time.Millisecond)
 	}
 }
