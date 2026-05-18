@@ -20,18 +20,6 @@ const (
 	directionDown
 )
 
-type SituationReport struct {
-	// If the player is not holding the treasure then display the moves
-	// to the treasure. If the player is holding the treasure then display
-	// the moves to the exit.
-	Moves          int
-	MovesRemaining int
-	MazogsToKill   int
-	MovesKill      int
-	MovesView      int
-	MovesReport    int
-}
-
 type Game struct {
 	hasCountdown   bool
 	mazogsMove     bool
@@ -39,7 +27,6 @@ type Game struct {
 	movesRemaining int
 	movesKill      int
 	movesView      int
-	movesReport    int
 	level          int
 	maze           *maze.Maze
 	mazogTable     []int
