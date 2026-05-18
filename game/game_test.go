@@ -6,6 +6,64 @@ import (
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
+// TestApplyMoveValues checks that movesKill, movesView, and movesRemaining are
+// computed correctly for each level and that the movesKill cap is enforced.
+// BASIC references: 6444 (movesKill = INT(moves/5*level)), 6448 (movesView = 30/level).
+func TestApplyMoveValues(t *testing.T) {
+	tests := []struct {
+		name              string
+		level             int
+		moves             int
+		wantMovesKill     int
+		wantMovesView     int
+		wantMovesRemaining int
+	}{
+		// Level 1 (TRY IT OUT): movesKill = moves/5*1, movesView = 30/1 = 30.
+		{name: "easy typical", level: levelEasy, moves: 150,
+			wantMovesKill: 30, wantMovesView: 30, wantMovesRemaining: 610},
+
+		// Level 2 (FACE A CHALLENGE): movesKill = moves/5*2, movesView = 30/2 = 15.
+		{name: "medium typical", level: levelMedium, moves: 150,
+			wantMovesKill: 60, wantMovesView: 15, wantMovesRemaining: 610},
+
+		// Level 3 (MANIAC): movesKill = moves/5*3, movesView = 30/3 = 10.
+		{name: "hard typical", level: levelHard, moves: 150,
+			wantMovesKill: 90, wantMovesView: 10, wantMovesRemaining: 610},
+
+		// Integer division: moves not divisible by 5 is truncated before multiplying.
+		// 152/5 = 30 (integer), 30*3 = 90.
+		{name: "hard truncated division", level: levelHard, moves: 152,
+			wantMovesKill: 90, wantMovesView: 10, wantMovesRemaining: 618},
+
+		// Cap: movesKill must not exceed 255.
+		// 430/5 = 86, 86*3 = 258 -> capped to 255.
+		{name: "hard cap at 255", level: levelHard, moves: 430,
+			wantMovesKill: 255, wantMovesView: 10, wantMovesRemaining: 1730},
+
+		// Cap boundary: value exactly 255 should not be capped.
+		// 425/5 = 85, 85*3 = 255 -> no cap needed.
+		{name: "hard cap boundary exact", level: levelHard, moves: 425,
+			wantMovesKill: 255, wantMovesView: 10, wantMovesRemaining: 1710},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &Game{level: tt.level}
+			applyMoveValues(g, tt.moves)
+
+			if g.movesKill != tt.wantMovesKill {
+				t.Errorf("movesKill = %d, want %d", g.movesKill, tt.wantMovesKill)
+			}
+			if g.movesView != tt.wantMovesView {
+				t.Errorf("movesView = %d, want %d", g.movesView, tt.wantMovesView)
+			}
+			if g.movesRemaining != tt.wantMovesRemaining {
+				t.Errorf("movesRemaining = %d, want %d", g.movesRemaining, tt.wantMovesRemaining)
+			}
+		})
+	}
+}
+
 func deadMazogTable() []int {
 	table := make([]int, 38)
 	for i := range table {

@@ -23,10 +23,10 @@ const (
 type Game struct {
 	hasCountdown   bool
 	mazogsMove     bool
-	slowDown       bool
+	slowDown       bool // adds an extra step delay after each move (TRY IT OUT only); mirrors BASIC 2170 CALL $426D patch
 	movesRemaining int
-	movesKill      int
-	movesView      int
+	movesKill      int // moves added to the countdown when the player kills a mazog (player-initiated fights only)
+	movesView      int // moves deducted from the countdown each time the player uses the View command
 	level          int
 	maze           *maze.Maze
 	mazogTable     []int
@@ -819,9 +819,17 @@ func (g *Game) ChooseEntrance(dir int) {
 		g.maze.RelocateTreasure()
 	}
 
+	applyMoveValues(g, moves)
+}
+
+// applyMoveValues sets the move budget and per-action costs derived from the
+// distance to the treasure and the current level. Extracted so it can be
+// tested independently of maze generation.
+// Assembly / BASIC references: 6444 (movesKill), 6448 (movesView), 6450 (movesRemaining).
+func applyMoveValues(g *Game, moves int) {
 	// Calculate the number of moves allowed. Include an extra 10 to compensate
 	// for the cost of the situation report that is displayed before the game begins.
-	// Note that this extra 10 moves is not included in the figure show to the user
+	// Note that this extra 10 moves is not included in the figure shown to the user
 	// in the initial situation report (it has already been deducted by then) but it
 	// is used in calculating the score should the player exit with the treasure.
 	g.movesRemaining = moves*4 + 10
