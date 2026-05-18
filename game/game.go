@@ -727,7 +727,7 @@ func decrementTimer(g *Game) {
 	g.movesRemaining--
 }
 
-// displayView renders a 16*16 cell window of raw maze codes centred on the
+// displayView renders a 16x16 cell window of raw maze codes centred on the
 // player, starting at screen position (row=4, col=8). Cells outside the maze
 // bounds are shown as InternalWall. This mirrors the ZX-81 View routine at
 // Assembly L517C.
@@ -858,6 +858,27 @@ func situationReport(g *Game) {
 	}
 
 	if g.level > levelEasy {
+		// The situation report costs 10 moves; deduct them from the display
+		// value so the player sees their true remaining budget.
+		// BASIC 6477: IF ML>11 THEN LET ML=ML-10
+		ml := g.movesRemaining
+		if ml > 11 {
+			ml -= 10
+		}
+		graphics.PrintAt(7, 2, fmt.Sprintf("YOU HAVE %d MOVES TO GO", ml))
+
+		if ml < moves {
+			// Insufficient moves to reach the goal; show how many mazogs
+			// the player must kill to make up the deficit.
+			// BASIC 6482: LET X=INT((MOVES-ML)/PEEK 18779)+1
+			mazogs := (moves-ml)/g.movesKill + 1
+			graphics.PrintAt(9, 2, "YOU NEED TO KILL AT LEAST")
+			graphics.PrintAt(10, 2, fmt.Sprintf("%d MAZOG", mazogs))
+		}
+
+		graphics.PrintAt(13, 2, fmt.Sprintf(`YOU GAIN %d FOR A "KILL"`, g.movesKill))
+		graphics.PrintAt(15, 2, fmt.Sprintf(`YOU LOSE %d FOR EACH "VIEW"`, g.movesView))
+		graphics.PrintAt(17, 2, "THIS REPORT TAKES 10 MOVES")
 	}
 
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
