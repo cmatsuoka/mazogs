@@ -34,7 +34,6 @@ type SituationReport struct {
 
 type Game struct {
 	hasCountdown   bool
-	mazogsJump     bool
 	mazogsMove     bool
 	slowDown       bool
 	movesRemaining int
@@ -160,7 +159,6 @@ func whichGame(g *Game) int {
 			graphics.Present()
 			g.hasCountdown = false
 			g.mazogsMove = false
-			g.mazogsJump = false
 			g.slowDown = true
 			return levelEasy
 		case "2":
@@ -171,7 +169,6 @@ func whichGame(g *Game) int {
 			graphics.Present()
 			g.hasCountdown = true
 			g.mazogsMove = false
-			g.mazogsJump = false
 			g.slowDown = false
 			return levelMedium
 		case "3":
@@ -190,7 +187,6 @@ func whichGame(g *Game) int {
 			}
 			g.hasCountdown = true
 			g.mazogsMove = true
-			g.mazogsJump = true
 			g.slowDown = false
 			return levelHard
 		}
@@ -501,9 +497,9 @@ func moveAllMazogs(g *Game) {
 	// Assembly L4EE7: restore all mazog cells (TraceRoute/Distance wipes them).
 	g.maze.InsertMazogs(g.mazogTable)
 
-	// Assembly L4B0C: the entire mazog loop is skipped when there is no
-	// countdown timer (TryItOut mode). Only run when g.mazogsMove is true.
-	if !g.mazogsMove {
+	// Assembly L4B0C: the entire mazog loop (including fight checks) is skipped
+	// when there is no countdown timer (TryItOut mode).
+	if !g.hasCountdown {
 		return
 	}
 
@@ -523,6 +519,12 @@ func moveAllMazogs(g *Game) {
 			if g.killed {
 				return
 			}
+			continue
+		}
+
+		// Assembly L4F56: mobility flag ($00=Moving, $01=Static). Level 2
+		// mazogs are static -- they can still fight when adjacent but do not move.
+		if !g.mazogsMove {
 			continue
 		}
 
