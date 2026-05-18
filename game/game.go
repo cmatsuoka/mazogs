@@ -51,7 +51,7 @@ type Game struct {
 	wayShownAt      time.Time
 	viewMode        bool
 	viewModeAt      time.Time
-	animIdleTicks   int // counts 10ms idle polls; advances animation every animIdleTicksMax ticks
+	animIdleTicks   int // counts idle polls; advances animation every animIdleTicksMax ticks
 	starved         bool
 	exited          bool
 	reportRequest   bool
@@ -62,8 +62,8 @@ type Game struct {
 }
 
 const (
-	idlePollMs       = 20                       // ms per idle loop iteration
-	stepDelayMs      = 240                      // ms per step during continuous walking
+	idlePollMs       = 50                       // ms per idle loop iteration
+	stepDelayMs      = 350                      // ms per step during continuous walking
 	firstStepDelayMs = 100                      // ms after the first step; long enough for a single-step tap
 	prisonerDelayMs  = 700                      // ms before prisoner reveals the route
 	animIdleTicksMax = stepDelayMs / idlePollMs // ticks before advancing animation when idle
@@ -401,18 +401,19 @@ func gameLoop(g *Game) {
 		return
 	case "":
 		// No key held — show idle sprite and poll quickly so a new press
-		// is picked up immediately. Advance animation at the same ~400ms
-		// cadence as player steps so sprites don't freeze when idle.
+		// is picked up immediately. Advance animation and move mazogs at
+		// the same ~400ms cadence as player steps so sprites don't freeze
+		// when idle and mazogs don't outrun the player.
 		g.moving = false
 		g.animIdleTicks++
 		if g.animIdleTicks >= animIdleTicksMax {
 			g.animIdleTicks = 0
 			advanceAnimation(g.maze)
+			moveAllMazogs(g)
 		}
 		showPlayerStanding(g)
 		graphics.ProcessEvents()
 		time.Sleep(idlePollMs * time.Millisecond)
-		moveAllMazogs(g)
 		graphics.Present()
 		return
 	default:

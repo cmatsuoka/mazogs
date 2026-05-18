@@ -9,7 +9,9 @@
 ```
 
 A Go port of **Mazogs**, the classic maze game originally written by Don Priestley
-and published by Bug-Byte Software Ltd in 1981 for the Sinclair ZX-81.
+and published by Bug-Byte Software Ltd in 1981 for the Sinclair ZX-81. This
+implementation is based on the [disassembly by Paul Farrow](http://www.fruitcake.plus.com/Sinclair/ZX81/Disassemblies/Mazogs.htm).
+
 
 ## About the game
 
@@ -20,6 +22,7 @@ the route to the treasure, and swords that can be used in combat.
 
 The game features three difficulty levels and a limited number of moves,
 requiring the player to balance exploration with efficiency.
+
 
 ## Controls
 
@@ -32,6 +35,7 @@ requiring the player to balance exploration with efficiency.
 | V          | Display mini-map view    |
 | Y          | Request situation report |
 
+
 ## Building
 
 Requires Go 1.22+ and SDL2 development libraries.
@@ -39,6 +43,7 @@ Requires Go 1.22+ and SDL2 development libraries.
 ```sh
 go build
 ```
+
 
 ## Running
 

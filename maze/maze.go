@@ -145,7 +145,7 @@ const maxStartSearchRetries = 1024
 
 // Generate generates the maze. The maze must already have been filled with internal walls,
 // surrounded by an external wall. The routine creates a series of paths, with the initial
-// path starting from the maze entrance. A direction is selected at random and an attempt
+// path starting from the treasure position. A direction is selected at random and an attempt
 // made to progress the path in that direction. If this succeeds then a new random direction
 // is selected and an attempt made to progress the path in the new direction. If the path
 // could not be progressed in the selected direction then the other possible directions are

@@ -1,0 +1,132 @@
+Mazogs Maze Generation Algorithm
+=================================
+Source: maze/maze.go vs docs/MazogsDisassembly.asm (ZX-81 original)
+
+
+OVERVIEW
+--------
+The maze is a 48-row * 64-column grid (3072 bytes). Each cell holds a
+one-byte "maze code". Two wall types are used during generation:
+
+  ExternalWall (0x08) - checkerboard border around the perimeter
+  InternalWall (0x80) - solid black, fills the interior before carving
+  Empty        (0x00) - a carved passage
+
+Generation proceeds in three steps:
+
+  1. constructMazeArea  - fill interior with InternalWall, border with ExternalWall
+  2. addTreasure        - place the Treasure token at a random interior cell
+  3. Generate (loop)    - carve paths until maze is saturated
+
+
+PATH CARVING LOOP (Generate / L4136)
+-------------------------------------
+Starting from an initial position (see "Starting Position" below), the
+algorithm repeatedly tries to advance the current path one cell at a time:
+
+  a. Pick a random direction (0=left, 1=right, 2=up, 3=down).
+  b. Try that direction. If it succeeds, loop back to (a) from the new pos.
+  c. If it fails, fall through a fixed sequence of the remaining directions
+     until one succeeds, then loop back to (a).
+  d. If all four directions fail (dead end), pick a new random starting
+     position anywhere in the maze and restart from (a).
+  e. Exit when the maze is saturated (see "Termination Criterion" below).
+
+The fallthrough order after a failed initial direction is always the same
+circular sequence: left -> right -> up -> down. This ensures all four
+directions are checked before declaring a dead end.
+
+  Assembly equivalent: L4144-L418B (direction dispatch + fallthrough chain)
+
+
+CAN-GO CHECKS (canGoLeft/Right/Up/Down)
+-----------------------------------------
+Before advancing in a direction, the routine checks that doing so will not
+merge two existing paths (i.e., it would create a passage wide enough to
+connect two independent corridors). The check pattern for each direction:
+
+  Left   (L41D6): pos-1, pos-2, pos+cols-1, pos-cols-1 all InternalWall
+  Right  (L41FA): pos+1, pos+2, pos+cols+1, pos-cols+1 all InternalWall
+  Up     (L421E): pos-cols-1, pos-cols, pos-cols+1, pos-2*cols all InternalWall
+  Down   (L4249): pos+cols-1, pos+cols, pos+cols+1, pos+2*cols all InternalWall
+
+If all checked cells are InternalWall, the current cell is carved (set to
+Empty) and pos advances by one step in the chosen direction.
+
+  NOTE (disassembly labelling error): The ZX-81 disassembly labels L421E as
+  "Progress Path Downwards" and L4249 as "Progress Path Upwards", but the
+  arithmetic is inverted -- L421E subtracts MazeColumns (moves up in memory =
+  up on screen) and L4249 adds MazeColumns (moves down). The Go code uses
+  the correct names canGoUp and canGoDown.
+
+
+NEW START POSITION (newStartPosition / L418C)
+----------------------------------------------
+When no direction is available at the current position:
+
+  1. Check termination (dead-end counter in Go; frame-counter timeout on ZX-81).
+     If expired -> maze generation is complete.
+  2. Generate a random 8-bit number r (0-255).
+  3. Compute candidate = row2_start + r * 11
+     (multiplying by 11 distributes candidates across the full maze width.)
+  4. Scan up to N consecutive cells rightward from candidate. If any is
+     Empty, use it as the new starting position and begin a new path there.
+  5. If none found, go back to step 2.
+
+  Assembly (L418C): scans the initial cell THEN loops 6 more = 7 cells total
+                    (candidate, candidate+1, ..., candidate+6)
+  Go code:          loop runs 7 iterations to match the assembly
+                    (candidate, candidate+1, ..., candidate+6)
+
+
+STARTING POSITION FOR PATH GENERATION
+---------------------------------------
+  Both the assembly and Go code start carving from the Treasure position.
+
+  In the assembly, BASIC 6146-6148 sets L4088 (the player/path-start
+  variable) to the treasure location before calling L4136 (Generate).
+  The default value of L4088 (MAZE + 0x01D6) is just the static
+  initializer and is overwritten before generation begins.
+
+  In Go, addTreasure() sets m.PlayerPos to the treasure location, and
+  Generate() starts from m.PlayerPos.
+
+
+CONSTRUCT MAZE AREA (constructMazeArea / L4118)
+-------------------------------------------------
+  - Top row    (i < 64):           ExternalWall
+  - Bottom row (i > 47*64):        ExternalWall
+  - Left col   (i % 64 == 0):      ExternalWall
+  - Right col  (i % 64 == 63):     ExternalWall
+  - All interior cells:            InternalWall
+
+  Implementation is correct and matches the assembly.
+
+
+TERMINATION CRITERION
+----------------------
+  Original ZX-81: wall-clock timeout of 5.12-10.24 seconds (measured via
+  the TV-frame interrupt counter). This was the simplest option available
+  on constrained hardware.
+
+  Go reimplementation: saturation detection. Generation stops when
+  maxConsecutiveDeadEnds (512) dead ends occur consecutively without any
+  cell being carved. This happens naturally when all remaining InternalWall
+  cells are surrounded on too many sides by passages and cannot be carved
+  without merging two corridors. The termination is deterministic and
+  hardware-independent.
+
+  A secondary guard (maxStartSearchRetries = 1024) stops newStartPosition
+  from looping forever in the degenerate case where no Empty cells remain.
+
+
+
+------------------------------------------------------
+After Generate returns, the game calls:
+  - InsertEntrance()   carves a passageway at the right edge (row 19/20) and
+                       places the player there (sets m.PlayerPos).
+  - Places mazogs, swords, and prisoners at random interior positions.
+  - TraceRoute()       flood-fills "ThisWay" markers from player to treasure
+                       (or exit), then removes dead ends, leaving only the
+                       solution path marked.
+
