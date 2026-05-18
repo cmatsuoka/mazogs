@@ -25,6 +25,7 @@ type Game struct {
 	mazogsMove     bool
 	slowDown       bool // adds an extra step delay after each move (TRY IT OUT only); mirrors BASIC 2170 CALL $426D patch
 	movesRemaining int
+	movesAllowed   int // initial move budget, set once at game start; used for the score calculation (BASIC MA)
 	movesKill      int // moves added to the countdown when the player kills a mazog (player-initiated fights only)
 	movesView      int // moves deducted from the countdown each time the player uses the View command
 	level          int
@@ -318,7 +319,37 @@ func play(g *Game) {
 			}
 		}
 	}
-	graphics.WaitKey()
+	scoreScreen(g)
+}
+
+// scoreScreen fills the screen black, shows the score if the player exited with
+// the treasure on a non-easy level, then waits for G (new game) or M (examine
+// maze, not yet implemented). BASIC 3200-4534.
+func scoreScreen(g *Game) {
+	// BASIC 3200: fill display with black.
+	fillScreen(0x80)
+
+	// BASIC 3216: show score only when exited with treasure and not TRY IT OUT.
+	if g.exited && g.level != levelEasy {
+		graphics.PrintAt(4, 13, "score")
+		graphics.PrintAt(7, 2, fmt.Sprintf("MOVES ALLOWED = %d", g.movesAllowed))
+		graphics.PrintAt(8, 0, fmt.Sprintf("\x88\x88MOVES LEFT = %d", g.movesRemaining))
+		graphics.PrintAt(9, 0, fmt.Sprintf("\x88\x88SCORE = %d PER CENT", g.movesRemaining*100/g.movesAllowed))
+	}
+
+	// BASIC 4500-4520.
+	graphics.PrintAt(18, 2, `PRESS "M" TO EXAMINE THE MAZE`)
+	graphics.PrintAt(20, 2, `PRESS "G" FOR ANOTHER GAME`)
+	graphics.Present()
+
+	// BASIC 4522-4534: wait for M or G; M is not yet implemented.
+	for {
+		graphics.WaitKey()
+		switch graphics.InKey() {
+		case "g", "G":
+			return
+		}
+	}
 }
 
 func gameLoop(g *Game) {
@@ -833,6 +864,7 @@ func applyMoveValues(g *Game, moves int) {
 	// in the initial situation report (it has already been deducted by then) but it
 	// is used in calculating the score should the player exit with the treasure.
 	g.movesRemaining = moves*4 + 10
+	g.movesAllowed = g.movesRemaining // BASIC 6441: LET MA=N
 
 	// Calculate the number of moves gained for killing a mazog.
 	g.movesKill = moves / 5 * g.level
