@@ -9,11 +9,8 @@ import (
 )
 
 var (
-	width     int
-	height    int
 	window    *sdl.Window
 	renderer  *sdl.Renderer
-	image     *sdl.Surface
 	screen    *sdl.Texture
 	fontAtlas *sdl.Texture
 
@@ -41,7 +38,7 @@ func Init(title string, width, height int32) error {
 	if err != nil {
 		return fmt.Errorf("can't create screen texture: %s", err)
 	}
-	screen.SetBlendMode(sdl.BLENDMODE_NONE)
+	_ = screen.SetBlendMode(sdl.BLENDMODE_NONE)
 
 	fontAtlas, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_TARGET, 128, 64)
 	if err != nil {
@@ -58,53 +55,55 @@ func Init(title string, width, height int32) error {
 
 	buildFontAtlas()
 
-	renderer.Clear()
+	_ = renderer.Clear()
 
 	return nil
 }
 
 func Deinit() {
 	if screen != nil {
-		screen.Destroy()
+		_ = screen.Destroy()
 	}
 	if fontAtlas != nil {
-		fontAtlas.Destroy()
+		_ = fontAtlas.Destroy()
 	}
 	if window != nil {
-		window.Destroy()
+		_ = window.Destroy()
 	}
 }
 
-func Present() error {
+func Present() {
 	if err := renderer.SetRenderTarget(nil); err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Present: SetRenderTarget: %v\n", err)
+		return
 	}
+	// Always restore the render target to screen once we have switched away
+	// from it, even if Copy fails. This keeps the renderer in a consistent
+	// state for subsequent Present or renderChar calls.
+	defer func() { _ = renderer.SetRenderTarget(screen) }()
 	if err := renderer.Copy(screen, nil, nil); err != nil {
-		return err
+		fmt.Fprintf(os.Stderr, "Present: Copy: %v\n", err)
+		return
 	}
 	renderer.Present()
-	renderer.SetRenderTarget(screen)
-
-	return nil
 }
 
 func ProcessEvents() {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch event.(type) {
+		switch event := event.(type) {
 		case *sdl.WindowEvent:
-			switch event.(*sdl.WindowEvent).Event {
+			switch event.Event {
 			case sdl.WINDOWEVENT_CLOSE:
 				os.Exit(0)
 			}
 
 		case *sdl.KeyboardEvent:
-			kev := event.(*sdl.KeyboardEvent)
-			if kev.Repeat != 0 {
+			if event.Repeat != 0 {
 				break
 			}
-			if kev.Type == sdl.KEYDOWN {
+			if event.Type == sdl.KEYDOWN {
 				keyPressed = true
-				keyValue = string(kev.Keysym.Sym)
+				keyValue = string(event.Keysym.Sym)
 				keyLatch = keyValue
 			} else {
 				// Only clear keyValue if the released key is the one
@@ -113,7 +112,7 @@ func ProcessEvents() {
 				// interrupting a held movement key — matching the
 				// ZX-81 LAST_K behaviour which always reflects the
 				// physical keyboard state.
-				if keyValue == string(kev.Keysym.Sym) {
+				if keyValue == string(event.Keysym.Sym) {
 					keyValue = ""
 				}
 			}
@@ -140,7 +139,7 @@ func renderChar(row, col int, c byte) {
 	}
 	src := sdl.Rect{X: int32((c & 0x0f) << 3), Y: int32((c >> 4) << 3), W: 8, H: 8}
 	dst := sdl.Rect{X: int32(col << 3), Y: int32(row << 3), W: 8, H: 8}
-	renderer.Copy(fontAtlas, &src, &dst)
+	_ = renderer.Copy(fontAtlas, &src, &dst)
 }
 
 func buildFontAtlas() {
@@ -148,7 +147,7 @@ func buildFontAtlas() {
 	for i := byte(0); i < 128; i++ {
 		dst := sdl.Rect{X: int32((i & 0x0f) << 3), Y: int32((i >> 4) << 3), W: 8, H: 8}
 		buildCharPixels(font[i], &pixels)
-		fontAtlas.Update(&dst, unsafe.Pointer(&pixels[0]), 8*3)
+		_ = fontAtlas.Update(&dst, unsafe.Pointer(&pixels[0]), 8*3)
 	}
 }
 

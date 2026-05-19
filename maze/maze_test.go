@@ -19,8 +19,7 @@ func TestPopulateMazogsNotAdjacentToExternalWall(t *testing.T) {
 	// Regression for mazog placement: candidates must be empty and not
 	// adjacent to an external wall on either side (assembly L4EC9).
 	for seed := int64(0); seed < 64; seed++ {
-		rand.Seed(seed)
-
+		rand.Seed(seed) //nolint:staticcheck
 		m := New()
 		m.Generate()
 		m.InsertEntrance()

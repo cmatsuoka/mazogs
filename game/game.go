@@ -125,6 +125,7 @@ func showIntro(g *Game) {
 			g.tick()
 			showSprites(g.maze, num)
 			graphics.PrintAt(i, 25, "MAZOGS")
+			graphics.Present()
 			// Use the same idle-loop constants as in-game so that changing
 			// animIdleTicksMax or idlePollMs affects both screens equally.
 			// Clear the latch so each scroll step requires a fresh key press.
@@ -166,6 +167,7 @@ func whichGame(g *Game) int {
 		graphics.PrintAt(12, 5, "2. FACE A CHALLENGE")
 		graphics.PrintAt(14, 5, "3. MANIAC MOBILE MAZOGS")
 		graphics.PrintAt(18, 5, "PRESS NUMBER TO CHOOSE")
+		graphics.Present()
 		graphics.WaitKey()
 		switch graphics.InKey() {
 		case "1":
@@ -218,6 +220,7 @@ func initialize(g *Game, level int) {
 	graphics.PrintAt(14, 2, " USE KEYS  W A D AND X   OR ")
 	graphics.PrintAt(16, 2, " W S H AND J.  V=VIEW,Y=STOP")
 	graphics.PrintAt(21, 2, "the_maze_is_now_being_drawn_")
+	graphics.Present()
 
 	start := time.Now()
 
@@ -228,6 +231,7 @@ func initialize(g *Game, level int) {
 		}
 		// BASIC 6158: maze not complex enough, signal redraw.
 		graphics.PrintAt(21, 2, " THE MAZE IS BEING REDRAWN  ")
+		graphics.Present()
 	}
 
 	// Keep the "being drawn" screen visible for at least 5 seconds total
@@ -244,6 +248,7 @@ func initialize(g *Game, level int) {
 
 	// BASIC 6298-6300: signal ready and wait for key press.
 	graphics.PrintAt(21, 2, " MAZE READY - PRESS ANY KEY ")
+	graphics.Present()
 	graphics.ClearKeys()
 	graphics.WaitKey()
 
@@ -325,6 +330,7 @@ func play(g *Game) {
 			area[ep-1] = maze.PlayerWithTreasure
 			showSprites(g.maze, 5)
 			graphics.PrintAt(10, 20, "EXIT")
+			graphics.Present()
 			for i := 0; i < 60; i++ {
 				if i%2 == 0 {
 					graphics.PrintAt(18, 13, "welcome_back")
@@ -339,6 +345,7 @@ func play(g *Game) {
 			area[ep+1] = maze.PlayerWithTreasure
 			showSprites(g.maze, 5)
 			graphics.PrintAt(10, 8, "EXIT")
+			graphics.Present()
 			for i := 0; i < 60; i++ {
 				if i%2 == 0 {
 					graphics.PrintAt(18, 7, "welcome_back")
@@ -744,6 +751,9 @@ func movePlayer(g *Game, pos int) {
 	g.maze.PlayerPos = pos
 
 	decrementTimer(g)
+	if g.starved {
+		return // assembly L4389: RET Z -- skip tick/showSprites on starvation tick
+	}
 	if g.moving {
 		stepDelay()
 	} else {
@@ -752,10 +762,6 @@ func movePlayer(g *Game, pos int) {
 	}
 	if g.slowDown {
 		stepDelay()
-	}
-
-	// Did the player starve to death?
-	if g.starved {
 	}
 
 	g.tick()
@@ -957,7 +963,6 @@ func situationReport(g *Game) string {
 	}
 
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
-
 	graphics.Present()
 	return graphics.WaitKey()
 }

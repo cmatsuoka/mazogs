@@ -1,10 +1,5 @@
 package graphics
 
-import (
-	"fmt"
-	"os"
-)
-
 var zxCharCode = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 0x00
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -51,9 +46,6 @@ func PrintAt(row, col int, msg string) {
 			col = 0
 		}
 	}
-	if err := Present(); err != nil {
-		fmt.Fprintf(os.Stderr, "PrintAt: %v\n", err)
-	}
 }
 
 func PutZXChar(row, col int, c byte) {
@@ -91,9 +83,5 @@ func ClearKeys() {
 }
 
 func convertCode(c byte) byte {
-	code := zxCharCode[c]
-	if code < 0 {
-		return 0
-	}
-	return byte(code)
+	return zxCharCode[c]
 }

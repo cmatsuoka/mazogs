@@ -422,10 +422,7 @@ func (m *Maze) TraceRoute() {
 
 	// Enter a loop to search for a specific maze code (treasure #1, treasure #2, exit,
 	// empty location or 'This Way') at the current location.
-	for {
-		if tryNewPos() {
-			break
-		}
+	for !tryNewPos() {
 	}
 	// Reached the treasure #1, treasure #2 or exit. The exit will only be in the maze after
 	// the player has collected the treasure and so will not be found when searching for
