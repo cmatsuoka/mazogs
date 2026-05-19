@@ -49,11 +49,12 @@ type Game struct {
 }
 
 const (
-	idlePollMs       = 50                       // ms per idle loop iteration
-	stepDelayMs      = 350                      // ms per step during continuous walking
-	firstStepDelayMs = 100                      // ms after the first step; long enough for a single-step tap
-	prisonerDelayMs  = 700                      // ms before prisoner reveals the route
-	animIdleTicksMax = stepDelayMs / idlePollMs // ticks before advancing animation when idle
+	idlePollMs         = 50                       // ms per idle loop iteration
+	stepDelayMs        = 350                      // ms per step during continuous walking
+	firstStepDelayMs   = 100                      // ms after the first step; long enough for a single-step tap
+	prisonerDelayMs    = 700                      // ms before prisoner reveals the route
+	checkingDistanceMs = 1500                     // ms to display the CHECKING DISTANCE screen
+	animIdleTicksMax   = stepDelayMs / idlePollMs // ticks before advancing animation when idle
 
 	// ZX-81 frame-based timeouts. The original uses the FRAMES counter
 	// (decrementing at 50Hz PAL) reset to $FFFF; timeout fires when the
@@ -187,7 +188,7 @@ func whichGame(g *Game) int {
 			fillScreen(0x80)
 			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
 			renderWallBackground()
-	for range 10 {
+			for i := range 10 {
 				sprites[maze.PlayerStanding].render(0, 2)
 				mazogCode := byte(maze.Mazog)
 				if i%2 == 0 {
@@ -852,6 +853,11 @@ func chooseEntranceSide(g *Game) {
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR INFORMATION")
 	graphics.Present()
 	graphics.WaitKey()
+
+	fillScreen(0x88)
+	graphics.PrintAt(10, 7, "CHECKING DISTANCE")
+	graphics.Present()
+	time.Sleep(checkingDistanceMs * time.Millisecond)
 }
 
 func (g *Game) ChooseEntrance(dir int) {
@@ -870,9 +876,6 @@ func (g *Game) ChooseEntrance(dir int) {
 			// The treasure is sufficiently far away.
 			break
 		}
-
-		// The treasure is not far enough away.
-		fmt.Printf("Treasure is too close (%d moves), relocating...\n", moves)
 		g.maze.RelocateTreasure()
 	}
 
