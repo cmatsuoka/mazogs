@@ -217,11 +217,11 @@ func (m *Maze) Generate() {
 }
 
 func newStartPosition(m *Maze) (pos int, found bool) {
-	for i := 0; i < maxStartSearchRetries; i++ {
+	for range maxStartSearchRetries {
 		// The time to generate the maze has not yet expired, so select a new
 		// random position as the start of the next path.
 		p := 2*MazeColumns + rand.Intn(256)*11
-		for j := 0; j < 7; j++ {
+		for range 7 {
 			if m.area[p] == Empty {
 				return p, true
 			}
@@ -597,13 +597,13 @@ func (m *Maze) Populate() (mazogTable []int) {
 	mazogTable = make([]int, numMazogs)
 
 	// Insert swords at random locations within the maze.
-	for i := 0; i < numSwords; i++ {
+	for range numSwords {
 		p := m.randomInternalWallPos()
 		m.area[p] = Sword
 	}
 
 	// Insert prisoners at random locations within the maze.
-	for i := 0; i < numPrisoners; i++ {
+	for range numPrisoners {
 		p := m.randomInternalWallPos()
 		m.area[p] = Prisoner2
 	}

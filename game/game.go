@@ -124,7 +124,7 @@ func showIntro(g *Game) {
 			// animIdleTicksMax or idlePollMs affects both screens equally.
 			// Clear the latch so each scroll step requires a fresh key press.
 			graphics.ClearLatch()
-			for tick := 0; tick < animIdleTicksMax; tick++ {
+			for range animIdleTicksMax {
 				graphics.ProcessEvents()
 				if graphics.InKey() != "" {
 					return true
@@ -187,7 +187,7 @@ func whichGame(g *Game) int {
 			fillScreen(0x80)
 			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
 			renderWallBackground()
-			for i := 0; i < 10; i++ {
+	for range 10 {
 				sprites[maze.PlayerStanding].render(0, 2)
 				mazogCode := byte(maze.Mazog)
 				if i%2 == 0 {
@@ -608,7 +608,7 @@ func fightMazog(g *Game, mazogPos int) {
 	// 7-iteration fight animation: Fighting1, Mazog, Fighting2, Mazog2, Fighting3, Mazog.
 	// On real ZX-81 each render takes ~90ms; we replicate that here.
 	// Events are pumped during each sleep so KEYUP is processed.
-	for i := 0; i < 7; i++ {
+	for range 7 {
 		for _, frame := range []byte{
 			maze.Fighting1, maze.Mazog,
 			maze.Fighting2, maze.Mazog2,
@@ -652,7 +652,7 @@ func fightMazog(g *Game, mazogPos int) {
 		// Assembly L4E97: mazog wins — 25 rapid blink cycles (~90ms each),
 		// then player is killed.
 		g.maze.Map()[mazogPos] = maze.Mazog
-		for i := 0; i < 25; i++ {
+		for range 25 {
 			g.tick()
 			showSprites(g.maze, 5)
 			graphics.Present()
