@@ -379,8 +379,8 @@ func scoreScreen(g *Game) {
 	if g.exited && g.level != levelEasy {
 		graphics.PrintAt(4, 13, "score")
 		graphics.PrintAt(7, 2, fmt.Sprintf("MOVES ALLOWED = %d", g.movesAllowed))
-		graphics.PrintAt(8, 0, fmt.Sprintf("\x88\x88MOVES LEFT = %d", g.movesRemaining))
-		graphics.PrintAt(9, 0, fmt.Sprintf("\x88\x88SCORE = %d PER CENT", g.movesRemaining*100/g.movesAllowed))
+		graphics.PrintAt(9, 0, fmt.Sprintf("``MOVES LEFT = %d", g.movesRemaining))
+		graphics.PrintAt(11, 0, fmt.Sprintf("``SCORE = %d PER CENT", g.movesRemaining*100/g.movesAllowed))
 	}
 
 	// BASIC 4500-4520.
@@ -973,7 +973,6 @@ func fillScreen(code byte) {
 			graphics.PutZXChar(i, j, code)
 		}
 	}
-	graphics.Present()
 }
 
 func stepDelay() {
