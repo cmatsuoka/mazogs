@@ -77,9 +77,33 @@ func (g *Game) Run() error {
 		level := whichGame(g)
 		initialize(g, level)
 		chooseEntranceSide(g)
-		situationReport(g)
+		key := situationReport(g)
+		buySword(g, key)
 		play(g)
 	}
+}
+
+// buySword handles the sword purchase when the player presses T on the
+// situation report screen. Mirrors BASIC 3062-3068.
+// Conditions: T was pressed, player is not holding the treasure, player does
+// not already have a sword, and the game is not TRY IT OUT (easy).
+// Cost: the new movesRemaining is set to INT(ML/2)+1, where ML is the display
+// value of movesRemaining (with the 10-move report cost already deducted).
+// The purchase is skipped if the new value would be <= 2 (too few moves left).
+func buySword(g *Game, key string) {
+	if key != "t" || g.hasTreasure || g.hasSword || g.level == levelEasy {
+		return
+	}
+	ml := g.movesRemaining
+	if ml > 11 {
+		ml -= 10
+	}
+	n := ml/2 + 1
+	if n <= 2 {
+		return // not enough moves remaining
+	}
+	g.movesRemaining = n
+	g.hasSword = true
 }
 
 // showIntro displays the animated title screen until a key is pressed.
@@ -147,7 +171,7 @@ func whichGame(g *Game) int {
 			graphics.Present()
 			g.hasCountdown = false
 			g.mazogsMove = false
-			g.slowDown = true
+			g.slowDown = false // don't use extra delay for now
 			return levelEasy
 		case "2":
 			fillScreen(0x80)
@@ -245,7 +269,9 @@ func play(g *Game) {
 		}
 		if g.reportRequest {
 			g.reportRequest = false
-			situationReport(g)
+			key := situationReport(g)
+			buySword(g, key)
+			fillScreen(0x88) // restore game background before rejoining game loop
 		}
 	}
 
@@ -876,7 +902,7 @@ func applyMoveValues(g *Game, moves int) {
 	g.movesView = 30 / g.level
 }
 
-func situationReport(g *Game) {
+func situationReport(g *Game) string {
 	fillScreen(0x88)
 	graphics.PrintAt(2, 7, "situation_report")
 	moves := g.maze.Distance()
@@ -908,12 +934,17 @@ func situationReport(g *Game) {
 		graphics.PrintAt(13, 2, fmt.Sprintf(`YOU GAIN %d FOR A "KILL"`, g.movesKill))
 		graphics.PrintAt(15, 2, fmt.Sprintf(`YOU LOSE %d FOR EACH "VIEW"`, g.movesView))
 		graphics.PrintAt(17, 2, "THIS REPORT TAKES 10 MOVES")
+
+		// Only shown when the player can actually buy (no sword, no treasure).
+		if !g.hasSword && !g.hasTreasure {
+			graphics.PrintAt(19, 2, `PRESS  T  TO "BUY" A SWORD`)
+		}
 	}
 
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
 
 	graphics.Present()
-	graphics.WaitKey()
+	return graphics.WaitKey()
 }
 
 func fillScreen(code byte) {

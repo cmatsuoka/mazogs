@@ -151,8 +151,117 @@ func TestDecrementTimerStarvationOnNextTickAtZero(t *testing.T) {
 	}
 }
 
-// TestMoveAllMazogsRestoresWhenMovementDisabled checks that disabled movement
-// still restores live mazogs to the maze without changing their positions.
+// TestBuySword checks that sword purchase correctly grants the sword, deducts
+// moves, and is blocked under all disqualifying conditions.
+// BASIC references: 3062 (guard conditions), 3064 (cost = INT(ML/2)+1),
+// 3065 (skip if N<=2), 3066-3068 (apply cost and set hasSword).
+func TestBuySword(t *testing.T) {
+	tests := []struct {
+		name               string
+		key                string
+		level              int
+		movesRemaining     int
+		hasSword           bool
+		hasTreasure        bool
+		wantHasSword       bool
+		wantMovesRemaining int
+	}{
+		// --- Successful purchases ---
+
+		// Typical mid-game state: movesRemaining > 11 so display value is
+		// movesRemaining-10 = 40; cost = INT(40/2)+1 = 21.
+		{name: "typical medium purchase",
+			key: "t", level: levelMedium, movesRemaining: 50,
+			wantHasSword: true, wantMovesRemaining: 21},
+
+		// Hard level is also permitted.
+		{name: "hard level purchase",
+			key: "t", level: levelHard, movesRemaining: 50,
+			wantHasSword: true, wantMovesRemaining: 21},
+
+		// movesRemaining <= 11: the 10-move deduction is NOT applied, so
+		// ml = movesRemaining directly. movesRemaining=10, ml=10, n=6.
+		{name: "low moves no deduction applied",
+			key: "t", level: levelMedium, movesRemaining: 10,
+			wantHasSword: true, wantMovesRemaining: 6},
+
+		// Boundary: movesRemaining=11 is the last value that skips deduction.
+		// ml=11, n = INT(11/2)+1 = 5+1 = 6.
+		{name: "deduction boundary movesRemaining 11",
+			key: "t", level: levelMedium, movesRemaining: 11,
+			wantHasSword: true, wantMovesRemaining: 6},
+
+		// Minimum purchase below the deduction boundary:
+		// movesRemaining=4, ml=4, n = INT(4/2)+1 = 3, which is > 2.
+		{name: "minimum purchase below deduction boundary",
+			key: "t", level: levelMedium, movesRemaining: 4,
+			wantHasSword: true, wantMovesRemaining: 3},
+
+		// Minimum purchase above the deduction boundary:
+		// movesRemaining=14, ml=14-10=4, n=3, which is > 2.
+		{name: "minimum purchase above deduction boundary",
+			key: "t", level: levelMedium, movesRemaining: 14,
+			wantHasSword: true, wantMovesRemaining: 3},
+
+		// --- Guard: wrong key ---
+
+		{name: "wrong key does nothing",
+			key: "y", level: levelMedium, movesRemaining: 50,
+			wantHasSword: false, wantMovesRemaining: 50},
+
+		// --- Guard: easy level blocked (BASIC 3062: K$="1") ---
+
+		{name: "easy level blocked",
+			key: "t", level: levelEasy, movesRemaining: 50,
+			wantHasSword: false, wantMovesRemaining: 50},
+
+		// --- Guard: already has a sword ---
+
+		{name: "already has sword",
+			key: "t", level: levelMedium, movesRemaining: 50, hasSword: true,
+			wantHasSword: true, wantMovesRemaining: 50},
+
+		// --- Guard: holding the treasure ---
+
+		{name: "holding treasure blocked",
+			key: "t", level: levelMedium, movesRemaining: 50, hasTreasure: true,
+			wantHasSword: false, wantMovesRemaining: 50},
+
+		// --- Guard: too few moves (BASIC 3065: IF N<=2 THEN GOTO 3070) ---
+
+		// movesRemaining=3 <= 11, ml=3, n = INT(3/2)+1 = 1+1 = 2, skip.
+		{name: "too few moves below deduction boundary",
+			key: "t", level: levelMedium, movesRemaining: 3,
+			wantHasSword: false, wantMovesRemaining: 3},
+
+		// movesRemaining=12 > 11, ml=2, n = INT(2/2)+1 = 1+1 = 2, skip.
+		// Note the discontinuity: 11 succeeds (n=6) but 12 fails (n=2)
+		// because the 10-move deduction collapses the display value.
+		{name: "too few moves above deduction boundary",
+			key: "t", level: levelMedium, movesRemaining: 12,
+			wantHasSword: false, wantMovesRemaining: 12},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &Game{
+				level:          tt.level,
+				movesRemaining: tt.movesRemaining,
+				hasSword:       tt.hasSword,
+				hasTreasure:    tt.hasTreasure,
+			}
+
+			buySword(g, tt.key)
+
+			if g.hasSword != tt.wantHasSword {
+				t.Errorf("hasSword = %v, want %v", g.hasSword, tt.wantHasSword)
+			}
+			if g.movesRemaining != tt.wantMovesRemaining {
+				t.Errorf("movesRemaining = %d, want %d", g.movesRemaining, tt.wantMovesRemaining)
+			}
+		})
+	}
+}
 func TestMoveAllMazogsRestoresWhenMovementDisabled(t *testing.T) {
 	m := maze.New()
 	pos := 2*maze.MazeColumns + 10

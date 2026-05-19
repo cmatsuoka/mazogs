@@ -121,11 +121,17 @@ func ProcessEvents() {
 	}
 }
 
-func WaitKey() {
+func WaitKey() string {
 	keyPressed = false
 	for !keyPressed {
 		ProcessEvents()
 	}
+	// Return keyLatch rather than keyValue: keyLatch is set on KEYDOWN and
+	// only cleared when consumed, so it holds the key even if a KEYUP event
+	// arrives in the same ProcessEvents poll and clears keyValue first.
+	k := keyLatch
+	keyLatch = ""
+	return k
 }
 
 func renderChar(row, col int, c byte) {
