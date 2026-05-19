@@ -62,6 +62,10 @@ const (
 	zx81FrameMs          = 20    // ZX-81 PAL frame period (1000/50)
 	thisWayTimeoutFrames = 0x300 // high byte $FF->$FC = 768 frames
 	viewTimeoutFrames    = 0x100 // high byte $FF->$FE = 256 frames
+
+	// ZX-81 screen fill characters
+	zxBlack           byte = 0x80 // solid black
+	zxInvChequerboard byte = 0x88 // inverse checkerboard
 )
 
 func New() *Game {
@@ -110,7 +114,7 @@ func buySword(g *Game, key string) {
 // showIntro displays the animated title screen until a key is pressed.
 func showIntro(g *Game) {
 	g.maze.IntroMaze()
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 	stepDelay()
 	g.maze.PlayerPos = 470
 	showSprites(g.maze, 4)
@@ -154,7 +158,7 @@ func showIntro(g *Game) {
 // The maze must be in IntroMaze state (set by showIntro) when called.
 func whichGame(g *Game) int {
 	for {
-		fillScreen(0x80) // solid black, matches Assembly BB subroutine (BASIC 6037: POKE 17370,128)
+		fillScreen(zxBlack) // solid black, matches Assembly BB subroutine (BASIC 6037: POKE 17370,128)
 		renderWallBackground()
 		sprites[maze.Mazog].render(0, 2) // BASIC 2082: POKE N-128,189 then USR 18602 toggles to eyes-open
 		graphics.PrintAt(1, 10, "WHICH GAME ?")
@@ -165,7 +169,7 @@ func whichGame(g *Game) int {
 		graphics.WaitKey()
 		switch graphics.InKey() {
 		case "1":
-			fillScreen(0x80)
+			fillScreen(zxBlack)
 			renderWallBackground()
 			sprites[maze.PlayerWithTreasureLeft].render(0, 2)
 			graphics.PrintAt(1, 11, "TRY IT OUT")
@@ -175,7 +179,7 @@ func whichGame(g *Game) int {
 			g.slowDown = false // don't use extra delay for now
 			return levelEasy
 		case "2":
-			fillScreen(0x80)
+			fillScreen(zxBlack)
 			renderWallBackground()
 			sprites[maze.PlayerWithSwordRight].render(0, 2)
 			graphics.PrintAt(1, 8, "FACE A CHALLENGE")
@@ -185,7 +189,7 @@ func whichGame(g *Game) int {
 			g.slowDown = false
 			return levelMedium
 		case "3":
-			fillScreen(0x80)
+			fillScreen(zxBlack)
 			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
 			renderWallBackground()
 			for i := range 10 {
@@ -249,7 +253,7 @@ func initialize(g *Game, level int) {
 }
 
 func play(g *Game) {
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 
 	g.hasSword = false
 	g.hasTreasure = false
@@ -272,12 +276,12 @@ func play(g *Game) {
 			g.reportRequest = false
 			key := situationReport(g)
 			buySword(g, key)
-			fillScreen(0x88) // restore game background before rejoining game loop
+			fillScreen(zxInvChequerboard) // restore game background before rejoining game loop
 		}
 	}
 
 	// BASIC 3012-3040: show end-game message based on cause of death/exit.
-	fillScreen(0x80)
+	fillScreen(zxBlack)
 	if g.starved {
 		// BASIC 3118-3124: flash "YOU HAVE STARVED TO DEATH" 35 times.
 		for i := 0; i < 35; i++ {
@@ -349,12 +353,20 @@ func play(g *Game) {
 	scoreScreen(g)
 }
 
-// scoreScreen fills the screen black, shows the score if the player exited with
+// scoreScreen fills the screen and shows the score if the player exited with
 // the treasure on a non-easy level, then waits for G (new game) or M (examine
 // maze, not yet implemented). BASIC 3200-4534.
 func scoreScreen(g *Game) {
-	// BASIC 3200: fill display with black.
-	fillScreen(0x80)
+	// BASIC 3200: GOSUB SUR fills with whatever 17370 holds at this point.
+	// For killed and exited paths, BASIC 6041 has restored 17370 to 136
+	// (chequerboard). For the starved path, 17370 was set to 128 (black) at
+	// BASIC 3100 and 3140 jumps past 3200, so the black fill from BASIC 3116
+	// stays in effect.
+	if g.starved {
+		fillScreen(zxBlack) // BASIC 3116: black; starved path skips 3200
+	} else {
+		fillScreen(zxInvChequerboard) // BASIC 3200: chequerboard; killed/exited paths
+	}
 
 	// BASIC 3216: show score only when exited with treasure and not TRY IT OUT.
 	if g.exited && g.level != levelEasy {
@@ -396,7 +408,7 @@ func gameLoop(g *Game) {
 		// i.e. $100 frames (256 * 20ms = 5.12s).
 		if time.Since(g.viewModeAt) >= viewTimeoutFrames*zx81FrameMs*time.Millisecond {
 			g.viewMode = false
-			fillScreen(0x88) // restore game background before normal rendering
+			fillScreen(zxInvChequerboard) // restore game background before normal rendering
 		} else {
 			// Use stepDelay (not time.Sleep) so SDL events are pumped,
 			// ensuring the KEYUP for 'V' is processed before the timer
@@ -428,8 +440,8 @@ func gameLoop(g *Game) {
 	case "v":
 		g.viewMode = true
 		g.viewModeAt = time.Now()
-		fillScreen(0x88)  // inverse checkerboard, matches assembly L43D5 (_INVCHEQUERBOARD=$88)
-		decrementTimer(g) // deduct movesView once on entry
+		fillScreen(zxInvChequerboard) // inverse checkerboard, matches assembly L43D5 (_INVCHEQUERBOARD=$88)
+		decrementTimer(g)             // deduct movesView once on entry
 		if g.hasCountdown {
 			g.maze.ClearMaze()
 		}
@@ -824,7 +836,7 @@ func showPlayerStanding(g *Game) {
 // a wall on the blocked side and completes entrance setup. Mirrors BASIC lines
 // 6310–6366.
 func chooseEntranceSide(g *Game) {
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 	displayView(g)
 	graphics.PrintAt(2, 1, `WHICH WAY ?   PRESS "L" OR "R"`)
 	graphics.Present()
@@ -848,13 +860,13 @@ func chooseEntranceSide(g *Game) {
 	g.ChooseEntrance(dir)
 	g.maze.InsertMazogs(g.mazogTable) // Distance() in ChooseEntrance clears mazogs; restore them.
 
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 	displayView(g)
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR INFORMATION")
 	graphics.Present()
 	graphics.WaitKey()
 
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 	graphics.PrintAt(10, 7, "CHECKING DISTANCE")
 	graphics.Present()
 	time.Sleep(checkingDistanceMs * time.Millisecond)
@@ -906,7 +918,7 @@ func applyMoveValues(g *Game, moves int) {
 }
 
 func situationReport(g *Game) string {
-	fillScreen(0x88)
+	fillScreen(zxInvChequerboard)
 	graphics.PrintAt(2, 7, "situation_report")
 	moves := g.maze.Distance()
 	if g.hasTreasure {
