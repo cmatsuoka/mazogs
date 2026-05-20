@@ -84,6 +84,10 @@ func (m *Maze) ExitPos() int {
 	return m.exitPos
 }
 
+func (m *Maze) TreasurePos() int {
+	return m.treasurePos
+}
+
 func (m *Maze) SetPlayerCode(code byte) {
 	m.area[m.PlayerPos] = code
 }

@@ -388,11 +388,14 @@ func scoreScreen(g *Game) {
 	graphics.PrintAt(20, 2, `PRESS "G" FOR ANOTHER GAME`)
 	graphics.Present()
 
-	// BASIC 4522-4534: wait for M or G; M is not yet implemented.
+	// BASIC 4522-4534: wait for M or G.
 	for {
 		graphics.WaitKey()
 		switch graphics.InKey() {
 		case "g", "G":
+			return
+		case "m", "M":
+			showMapViewer(g)
 			return
 		}
 	}
@@ -798,30 +801,11 @@ func decrementTimer(g *Game) {
 // Assembly L517C.
 func displayView(g *Game) {
 	const (
-		viewRows  = 16
-		viewCols  = 16
-		screenRow = 4
-		screenCol = 8
-		halfRows  = viewRows / 2
-		halfCols  = viewCols / 2
+		halfRows = 8
+		halfCols = 8
 	)
-
-	area := g.maze.Map()
-	mazeSize := len(area)
 	startPos := g.maze.PlayerPos - halfRows*maze.MazeColumns - halfCols
-
-	for r := 0; r < viewRows; r++ {
-		for c := 0; c < viewCols; c++ {
-			pos := startPos + r*maze.MazeColumns + c
-			var code byte
-			if pos < 0 || pos >= mazeSize {
-				code = maze.InternalWall
-			} else {
-				code = area[pos]
-			}
-			graphics.PutZXChar(screenRow+r, screenCol+c, code)
-		}
-	}
+	displayMazeWindow(g.maze.Map(), startPos)
 }
 
 func showPlayerStanding(g *Game) {
