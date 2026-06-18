@@ -53,6 +53,7 @@ const (
 	stepDelayMs        = 350                      // ms per step during continuous walking
 	firstStepDelayMs   = 100                      // ms after the first step; long enough for a single-step tap
 	prisonerDelayMs    = 700                      // ms before prisoner reveals the route
+	lineDelayMs        = 500                      // ms between situation report lines
 	checkingDistanceMs = 1500                     // ms to display the CHECKING DISTANCE screen
 	animIdleTicksMax   = stepDelayMs / idlePollMs // ticks before advancing animation when idle
 
@@ -909,12 +910,21 @@ func applyMoveValues(g *Game, moves int) {
 
 func situationReport(g *Game) string {
 	fillScreen(zxInvChequerboard)
-	graphics.PrintAt(2, 7, "situation_report")
+
+	// Render each line with a delay between lines to match the original
+	// BASIC interpreter's per-line processing time. BASIC 6456-6500.
+	renderLine := func(row, col int, msg string) {
+		graphics.PrintAt(row, col, msg)
+		graphics.Present()
+		lineDelay()
+	}
+
+	renderLine(2, 7, "situation_report")
 	moves := g.maze.Distance()
 	if g.hasTreasure {
-		graphics.PrintAt(5, 2, fmt.Sprintf(`MOVES BACK TO "BASE" = %d`, moves))
+		renderLine(5, 2, fmt.Sprintf(`MOVES BACK TO "BASE" = %d`, moves))
 	} else {
-		graphics.PrintAt(5, 2, fmt.Sprintf("MOVES TO THE TREASURE = %d", moves))
+		renderLine(5, 2, fmt.Sprintf("MOVES TO THE TREASURE = %d", moves))
 	}
 
 	if g.level > levelEasy {
@@ -925,29 +935,28 @@ func situationReport(g *Game) string {
 		if ml > 11 {
 			ml -= 10
 		}
-		graphics.PrintAt(7, 2, fmt.Sprintf("YOU HAVE %d MOVES TO GO", ml))
+		renderLine(7, 2, fmt.Sprintf("YOU HAVE %d MOVES TO GO", ml))
 
 		if ml < moves {
 			// Insufficient moves to reach the goal; show how many mazogs
 			// the player must kill to make up the deficit.
 			// BASIC 6482: LET X=INT((MOVES-ML)/PEEK 18779)+1
 			mazogs := (moves-ml)/g.movesKill + 1
-			graphics.PrintAt(9, 2, "YOU NEED TO KILL AT LEAST")
-			graphics.PrintAt(10, 2, fmt.Sprintf("%d MAZOG", mazogs))
+			renderLine(9, 2, "YOU NEED TO KILL AT LEAST")
+			renderLine(10, 2, fmt.Sprintf("%d MAZOG", mazogs))
 		}
 
-		graphics.PrintAt(13, 2, fmt.Sprintf(`YOU GAIN %d FOR A "KILL"`, g.movesKill))
-		graphics.PrintAt(15, 2, fmt.Sprintf(`YOU LOSE %d FOR EACH "VIEW"`, g.movesView))
-		graphics.PrintAt(17, 2, "THIS REPORT TAKES 10 MOVES")
+		renderLine(13, 2, fmt.Sprintf(`YOU GAIN %d FOR A "KILL"`, g.movesKill))
+		renderLine(15, 2, fmt.Sprintf(`YOU LOSE %d FOR EACH "VIEW"`, g.movesView))
+		renderLine(17, 2, "THIS REPORT TAKES 10 MOVES")
 
 		// Only shown when the player can actually buy (no sword, no treasure).
 		if !g.hasSword && !g.hasTreasure {
-			graphics.PrintAt(19, 2, `PRESS  T  TO "BUY" A SWORD`)
+			renderLine(19, 2, `PRESS  T  TO "BUY" A SWORD`)
 		}
 	}
 
-	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR THE GAME")
-	graphics.Present()
+	renderLine(21, 2, "PRESS ANY KEY FOR THE GAME")
 	return graphics.WaitKey()
 }
 
@@ -975,6 +984,16 @@ func stepDelay() {
 func prisonerAnswerDelay() {
 	t0 := time.Now()
 	for time.Since(t0) < prisonerDelayMs*time.Millisecond {
+		graphics.ProcessEvents()
+		time.Sleep(idlePollMs * time.Millisecond)
+	}
+}
+
+// lineDelay adds a short delay between situation report lines to simulate the
+// BASIC interpreter's per-line processing time.
+func lineDelay() {
+	t0 := time.Now()
+	for time.Since(t0) < lineDelayMs*time.Millisecond {
 		graphics.ProcessEvents()
 		time.Sleep(idlePollMs * time.Millisecond)
 	}
