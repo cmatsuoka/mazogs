@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/cmatsuoka/mazogs/graphics"
 	"github.com/cmatsuoka/mazogs/maze"
 )
@@ -50,39 +52,51 @@ func showMapViewer(g *Game) {
 	scrollPos := 0
 
 	for {
-		fillScreen(zxInvChequerboard)
-		displayMazeWindow(area, scrollPos)
-		graphics.Present()
-
-		graphics.WaitKey()
 		key := graphics.InKey()
 
 		switch key {
 		case "j", "Right":
+			// BASIC 1045-1047: scroll right one column.
 			scrollPos++
 		case "h", "Left":
+			// BASIC 1048-1050: scroll left one column.
 			scrollPos--
 		case "s", "Down":
+			// BASIC 1051: scroll down one row.
 			scrollPos += maze.MazeColumns
 		case "w", "Up":
+			// BASIC 1052: scroll up one row.
 			scrollPos -= maze.MazeColumns
 		case "p":
 			// BASIC 1052 / 1100-1116: show route to treasure.
 			showRoute(g)
-			// Insert mazogs and mark player death/exit position.
 			insertMazogsAndMarkPos(g)
+			waitKeyRelease()
 		case "0":
 			// BASIC 1054 / 1200-1212: remove route.
 			removeRoute(g)
+			waitKeyRelease()
 		case "g", "q":
+			// BASIC 1053: quit map viewer.
 			return
 		}
 
+		// BASIC 1055-1057: clamp scroll range.
 		if scrollPos < 0 {
 			scrollPos = 0
 		} else if scrollPos > maxScrollPos {
 			scrollPos = maxScrollPos
 		}
+
+		// Only render after a key action to match original behavior.
+		if key != "" {
+			fillScreen(zxInvChequerboard)
+			displayMazeWindow(area, scrollPos)
+			graphics.Present()
+		}
+
+		// Wait for next input.
+		stepDelay()
 	}
 }
 
@@ -123,4 +137,13 @@ func insertMazogsAndMarkPos(g *Game) {
 	area := g.maze.Map()
 	g.maze.InsertMazogs(g.mazogTable)
 	area[g.maze.PlayerPos] = maze.ExternalWall
+}
+
+// waitKeyRelease polls until the currently held key is released, pumping SDL
+// events so KEYUP is processed promptly.
+func waitKeyRelease() {
+	for graphics.InKey() != "" {
+		graphics.ProcessEvents()
+		time.Sleep(idlePollMs * time.Millisecond)
+	}
 }
