@@ -1,8 +1,6 @@
 package game
 
 import (
-	"time"
-
 	"github.com/cmatsuoka/mazogs/graphics"
 	"github.com/cmatsuoka/mazogs/maze"
 )
@@ -143,7 +141,6 @@ func insertMazogsAndMarkPos(g *Game) {
 // events so KEYUP is processed promptly.
 func waitKeyRelease() {
 	for graphics.InKey() != "" {
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+		poll()
 	}
 }

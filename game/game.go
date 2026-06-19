@@ -53,7 +53,7 @@ const (
 	stepDelayMs        = 350                      // ms per step during continuous walking
 	firstStepDelayMs   = 100                      // ms after the first step; long enough for a single-step tap
 	prisonerDelayMs    = 700                      // ms before prisoner reveals the route
-	lineDelayMs        = 500                      // ms between situation report lines
+	lineDelayTicks     = 10                       // ticks between situation report lines
 	checkingDistanceMs = 1500                     // ms to display the CHECKING DISTANCE screen
 	animIdleTicksMax   = stepDelayMs / idlePollMs // ticks before advancing animation when idle
 
@@ -74,6 +74,18 @@ func New() *Game {
 	return &Game{
 		maze: maze,
 	}
+}
+
+// poll pumps SDL events and sleeps for idlePollMs to yield CPU in idle loops.
+func poll() {
+	graphics.ProcessEvents()
+	time.Sleep(idlePollMs * time.Millisecond)
+}
+
+// pollFast is like poll but sleeps for a short duration for tight animation loops.
+func pollFast() {
+	graphics.ProcessEvents()
+	time.Sleep(10 * time.Millisecond)
 }
 
 func (g *Game) Run() error {
@@ -132,11 +144,10 @@ func showIntro(g *Game) {
 			// Clear the latch so each scroll step requires a fresh key press.
 			graphics.ClearLatch()
 			for range animIdleTicksMax {
-				graphics.ProcessEvents()
 				if graphics.InKey() != "" {
 					return true
 				}
-				time.Sleep(idlePollMs * time.Millisecond)
+				poll()
 			}
 		}
 		showSprites(g.maze, 5)
@@ -476,8 +487,7 @@ func gameLoop(g *Game) {
 			moveAllMazogs(g)
 		}
 		showPlayerStanding(g)
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+		poll()
 		graphics.Present()
 		return
 	default:
@@ -643,8 +653,7 @@ func fightMazog(g *Game, mazogPos int) {
 			graphics.Present()
 			t0 := time.Now()
 			for time.Since(t0) < 90*time.Millisecond {
-				graphics.ProcessEvents()
-				time.Sleep(10 * time.Millisecond)
+				pollFast()
 			}
 		}
 	}
@@ -682,8 +691,7 @@ func fightMazog(g *Game, mazogPos int) {
 			graphics.Present()
 			t0 := time.Now()
 			for time.Since(t0) < 90*time.Millisecond {
-				graphics.ProcessEvents()
-				time.Sleep(idlePollMs * time.Millisecond)
+				pollFast()
 			}
 		}
 		g.killed = true
@@ -974,8 +982,7 @@ func stepDelay() {
 	graphics.ClearLatch()
 	t0 := time.Now()
 	for time.Since(t0) < stepDelayMs*time.Millisecond {
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+		poll()
 	}
 }
 
@@ -984,18 +991,15 @@ func stepDelay() {
 func prisonerAnswerDelay() {
 	t0 := time.Now()
 	for time.Since(t0) < prisonerDelayMs*time.Millisecond {
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+		poll()
 	}
 }
 
 // lineDelay adds a short delay between situation report lines to simulate the
 // BASIC interpreter's per-line processing time.
 func lineDelay() {
-	t0 := time.Now()
-	for time.Since(t0) < lineDelayMs*time.Millisecond {
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+	for range lineDelayTicks {
+		poll()
 	}
 }
 
@@ -1007,7 +1011,6 @@ func firstStepDelay() {
 	graphics.ClearLatch()
 	t0 := time.Now()
 	for time.Since(t0) < firstStepDelayMs*time.Millisecond {
-		graphics.ProcessEvents()
-		time.Sleep(idlePollMs * time.Millisecond)
+		poll()
 	}
 }
