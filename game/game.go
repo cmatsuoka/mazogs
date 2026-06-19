@@ -247,9 +247,10 @@ func initialize(g *Game, level int) {
 	}
 
 	// Keep the "being drawn" screen visible for at least 5 seconds total
-	// (ZX-81 generation took 5–10s; on modern hardware we pad to match).
+	// (ZX-81 generation took 5-10s; on modern hardware we pad to match).
 	// No extra delay is added if generation itself took longer.
-	for remaining := 3*time.Second - time.Since(start); remaining > 0; remaining = 5*time.Second - time.Since(start) {
+	deadline := start.Add(5 * time.Second)
+	for remaining := time.Until(deadline); remaining > 0; remaining = time.Until(deadline) {
 		graphics.ProcessEvents()
 		sleep := remaining
 		if sleep > 10*time.Millisecond {
