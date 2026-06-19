@@ -512,9 +512,7 @@ func gameLoop(g *Game) {
 		g.movesRemaining += g.movesKill
 		fightMazog(g, pos)
 	case maze.Treasure, maze.Treasure2:
-		if !canProcessBlockedInteraction(g, code) {
-			stopAtBlockedTile(g, true)
-			graphics.Present()
+		if !beginBlockedInteraction(g, code) {
 			return
 		}
 		m := g.maze
@@ -532,9 +530,7 @@ func gameLoop(g *Game) {
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		stepDelay()
 	case maze.Prisoner, maze.Prisoner2:
-		if !canProcessBlockedInteraction(g, code) {
-			stopAtBlockedTile(g, true)
-			graphics.Present()
+		if !beginBlockedInteraction(g, code) {
 			return
 		}
 		graphics.ClearKeys()
@@ -553,9 +549,7 @@ func gameLoop(g *Game) {
 		g.moving = false
 		stepDelay()
 	case maze.Sword:
-		if !canProcessBlockedInteraction(g, code) {
-			stopAtBlockedTile(g, true)
-			graphics.Present()
+		if !beginBlockedInteraction(g, code) {
 			return
 		}
 		m := g.maze
@@ -601,6 +595,17 @@ func canProcessBlockedInteraction(g *Game, code byte) bool {
 	default:
 		return false
 	}
+}
+
+// beginBlockedInteraction applies the shared "must stop, then press again"
+// rule for adjacent interactions like treasure, prisoner, and sword.
+func beginBlockedInteraction(g *Game, code byte) bool {
+	if canProcessBlockedInteraction(g, code) {
+		return true
+	}
+	stopAtBlockedTile(g, true)
+	graphics.Present()
+	return false
 }
 
 // stopAtBlockedTile handles a blocked move attempt and can optionally discard
