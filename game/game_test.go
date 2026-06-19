@@ -267,26 +267,17 @@ func TestCanProcessBlockedInteraction(t *testing.T) {
 	tests := []struct {
 		name   string
 		moving bool
-		code   byte
 		want   bool
 	}{
-		{name: "stationary treasure", moving: false, code: maze.Treasure, want: true},
-		{name: "stationary treasure alternate sprite", moving: false, code: maze.Treasure2, want: true},
-		{name: "stationary prisoner", moving: false, code: maze.Prisoner, want: true},
-		{name: "stationary prisoner alternate sprite", moving: false, code: maze.Prisoner2, want: true},
-		{name: "stationary sword", moving: false, code: maze.Sword, want: true},
-		{name: "moving treasure blocked", moving: true, code: maze.Treasure, want: false},
-		{name: "moving prisoner blocked", moving: true, code: maze.Prisoner, want: false},
-		{name: "moving sword blocked", moving: true, code: maze.Sword, want: false},
-		{name: "stationary internal wall not interactable", moving: false, code: maze.InternalWall, want: false},
-		{name: "stationary empty not interactable", moving: false, code: maze.Empty, want: false},
+		{name: "stationary interaction allowed", moving: false, want: true},
+		{name: "moving interaction blocked", moving: true, want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &Game{moving: tt.moving}
-			if got := canProcessBlockedInteraction(g, tt.code); got != tt.want {
-				t.Fatalf("canProcessBlockedInteraction(moving=%v, code=%d) = %v, want %v", tt.moving, tt.code, got, tt.want)
+			if got := canProcessBlockedInteraction(g); got != tt.want {
+				t.Fatalf("canProcessBlockedInteraction(moving=%v) = %v, want %v", tt.moving, got, tt.want)
 			}
 		})
 	}

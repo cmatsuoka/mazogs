@@ -456,7 +456,7 @@ func gameLoop(g *Game) {
 		g.movesRemaining += g.movesKill
 		fightMazog(g, pos)
 	case maze.Treasure, maze.Treasure2:
-		if !beginBlockedInteraction(g, code) {
+		if !beginBlockedInteraction(g) {
 			return
 		}
 		m := g.maze
@@ -474,7 +474,7 @@ func gameLoop(g *Game) {
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		stepDelay()
 	case maze.Prisoner, maze.Prisoner2:
-		if !beginBlockedInteraction(g, code) {
+		if !beginBlockedInteraction(g) {
 			return
 		}
 		graphics.ClearKeys()
@@ -493,7 +493,7 @@ func gameLoop(g *Game) {
 		g.moving = false
 		stepDelay()
 	case maze.Sword:
-		if !beginBlockedInteraction(g, code) {
+		if !beginBlockedInteraction(g) {
 			return
 		}
 		m := g.maze
@@ -528,17 +528,8 @@ func gameLoop(g *Game) {
 // canProcessBlockedInteraction allows prisoner, sword, and treasure actions
 // only after the player has already stopped next to the blocked tile. This
 // prevents unintentional interactions with the tile.
-func canProcessBlockedInteraction(g *Game, code byte) bool {
-	if g.moving {
-		return false
-	}
-
-	switch code {
-	case maze.Treasure, maze.Treasure2, maze.Prisoner, maze.Prisoner2, maze.Sword:
-		return true
-	default:
-		return false
-	}
+func canProcessBlockedInteraction(g *Game) bool {
+	return !g.moving
 }
 
 func flashAlternatingMessage(count, row, col int, firstMsg, secondMsg string) {
@@ -591,8 +582,8 @@ func showExitScene(g *Game) {
 
 // beginBlockedInteraction applies the shared "must stop, then press again"
 // rule for adjacent interactions like treasure, prisoner, and sword.
-func beginBlockedInteraction(g *Game, code byte) bool {
-	if canProcessBlockedInteraction(g, code) {
+func beginBlockedInteraction(g *Game) bool {
+	if canProcessBlockedInteraction(g) {
 		return true
 	}
 	stopAtBlockedTile(g, true)
