@@ -188,9 +188,7 @@ func whichGame(g *Game) int {
 			sprites[maze.PlayerWithTreasureLeft].render(0, 2)
 			graphics.PrintAt(1, 11, "TRY IT OUT")
 			graphics.Present()
-			g.hasCountdown = false
-			g.mazogsMove = false
-			g.slowDown = false // don't use extra delay for now
+			applyLevelSelection(g, false, false, false) // don't use extra delay for now
 			return levelEasy
 		case "2":
 			fillScreen(zxBlack)
@@ -198,14 +196,12 @@ func whichGame(g *Game) int {
 			sprites[maze.PlayerWithSwordRight].render(0, 2)
 			graphics.PrintAt(1, 8, "FACE A CHALLENGE")
 			graphics.Present()
-			g.hasCountdown = true
-			g.mazogsMove = false
-			g.slowDown = false
+			applyLevelSelection(g, true, false, false)
 			return levelMedium
 		case "3":
 			fillScreen(zxBlack)
-			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
 			renderWallBackground()
+			graphics.PrintAt(1, 6, "MANIAC MOBILE MAZOGS")
 			for i := range 10 {
 				sprites[maze.PlayerStanding].render(0, 2)
 				mazogCode := byte(maze.Mazog)
@@ -216,12 +212,16 @@ func whichGame(g *Game) int {
 				sprites[mazogCode].render(0, 3)
 				graphics.Present()
 			}
-			g.hasCountdown = true
-			g.mazogsMove = true
-			g.slowDown = false
+			applyLevelSelection(g, true, true, false)
 			return levelHard
 		}
 	}
+}
+
+func applyLevelSelection(g *Game, hasCountdown, mazogsMove, slowDown bool) {
+	g.hasCountdown = hasCountdown
+	g.mazogsMove = mazogsMove
+	g.slowDown = slowDown
 }
 
 func initialize(g *Game, level int) {
