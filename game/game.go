@@ -301,74 +301,18 @@ func play(g *Game) {
 	// BASIC 3012-3040: show end-game message based on cause of death/exit.
 	fillScreen(zxBlack)
 	if g.starved {
-		// BASIC 3118-3124: flash "YOU HAVE STARVED TO DEATH" 35 times.
-		for i := 0; i < 35; i++ {
-			if i%2 == 0 {
-				graphics.PrintAt(10, 4, "YOU HAVE STARVED TO DEATH")
-			} else {
-				graphics.PrintAt(10, 4, "you have starved to death")
-			}
-			graphics.Present()
-			stepDelay()
-		}
+		// BASIC 3118-3124: 35 iterations, printing upper then lower each time.
+		flashAlternatingMessage(35, 10, 4, "YOU HAVE STARVED TO DEATH", "you have starved to death")
 	} else if g.killed {
 		// BASIC 3026-3034: fill screen black, draw sprites (showing the
-		// mazog that killed the player), then flash the death message while
-		// continuing to animate the scene.
+		// mazog that killed the player), then redraw and print the death
+		// message 40 times.
 		advanceAnimation(g.maze)
 		showSprites(g.maze, 5)
 		graphics.Present()
-		for i := 0; i < 40; i++ {
-			advanceAnimation(g.maze)
-			showSprites(g.maze, 5)
-			if i%2 == 0 {
-				graphics.PrintAt(18, 1, "death__to_all_treasure_seekers")
-			} else {
-				graphics.PrintAt(18, 1, "DEATH  TO ALL TREASURE SEEKERS")
-			}
-			graphics.Present()
-			stepDelay()
-		}
+		flashDeathMessage(g)
 	} else if g.exited {
-		// BASIC 3150-3196: player exited with the treasure.
-		// Place companion and player-with-treasure at the exit cell, then
-		// flash "welcome back" 60 times. Layout depends on which side of the
-		// maze the player entered from (g.enteredFromLeft).
-		ep := g.maze.ExitPos()
-		area := g.maze.Map()
-		area[ep-maze.MazeColumns] = maze.Empty // clear exit opening above
-		area[ep] = maze.PlayerStanding         // companion at exit cell
-		if g.enteredFromLeft {
-			// BASIC 3180-3196: entered from left, player is to the left.
-			area[ep-1] = maze.PlayerWithTreasure
-			showSprites(g.maze, 5)
-			graphics.PrintAt(10, 20, "EXIT")
-			graphics.Present()
-			for i := 0; i < 60; i++ {
-				if i%2 == 0 {
-					graphics.PrintAt(18, 13, "welcome_back")
-				} else {
-					graphics.PrintAt(18, 13, "WELCOME BACK")
-				}
-				graphics.Present()
-				stepDelay()
-			}
-		} else {
-			// BASIC 3160-3178: entered from right, player is to the right.
-			area[ep+1] = maze.PlayerWithTreasure
-			showSprites(g.maze, 5)
-			graphics.PrintAt(10, 8, "EXIT")
-			graphics.Present()
-			for i := 0; i < 60; i++ {
-				if i%2 == 0 {
-					graphics.PrintAt(18, 7, "welcome_back")
-				} else {
-					graphics.PrintAt(18, 7, "WELCOME BACK")
-				}
-				graphics.Present()
-				stepDelay()
-			}
-		}
+		showExitScene(g)
 	}
 	scoreScreen(g)
 }
@@ -597,6 +541,54 @@ func canProcessBlockedInteraction(g *Game, code byte) bool {
 	}
 }
 
+func flashAlternatingMessage(count, row, col int, firstMsg, secondMsg string) {
+	for i := 0; i < count; i++ {
+		graphics.PrintAt(row, col, firstMsg)
+		graphics.Present()
+		fastFlashDelay()
+		graphics.PrintAt(row, col, secondMsg)
+		graphics.Present()
+		fastFlashDelay()
+	}
+}
+
+func flashDeathMessage(g *Game) {
+	for range 40 {
+		advanceAnimation(g.maze)
+		showSprites(g.maze, 5)
+		graphics.PrintAt(18, 1, "death__to_all_treasure_seekers")
+		graphics.Present()
+		fastFlashDelay()
+	}
+}
+
+func showExitScene(g *Game) {
+	// BASIC 3150-3196: player exited with the treasure.
+	// Place companion and player-with-treasure at the exit cell, then
+	// flash "welcome back" 60 times. Layout depends on which side of the
+	// maze the player entered from (g.enteredFromLeft).
+	ep := g.maze.ExitPos()
+	area := g.maze.Map()
+	area[ep-maze.MazeColumns] = maze.Empty // clear exit opening above
+	area[ep] = maze.PlayerStanding         // companion at exit cell
+
+	messageCol := 7
+	exitCol := 8
+	playerPos := ep + 1
+	if g.enteredFromLeft {
+		// BASIC 3180-3196: entered from left, player is to the left.
+		messageCol = 13
+		exitCol = 20
+		playerPos = ep - 1
+	}
+	area[playerPos] = maze.PlayerWithTreasure
+
+	showSprites(g.maze, 5)
+	graphics.PrintAt(10, exitCol, "EXIT")
+	graphics.Present()
+	flashAlternatingMessage(60, 18, messageCol, "welcome_back", "WELCOME BACK")
+}
+
 // beginBlockedInteraction applies the shared "must stop, then press again"
 // rule for adjacent interactions like treasure, prisoner, and sword.
 func beginBlockedInteraction(g *Game, code byte) bool {
@@ -740,10 +732,7 @@ func fightMazog(g *Game, mazogPos int) {
 			g.tick()
 			showSprites(g.maze, 5)
 			graphics.Present()
-			t0 := time.Now()
-			for time.Since(t0) < 90*time.Millisecond {
-				pollFast()
-			}
+			fastFlashDelay()
 		}
 		g.killed = true
 	}
@@ -1036,6 +1025,17 @@ func stepDelay() {
 	t0 := time.Now()
 	for time.Since(t0) < stepDelayMs*time.Millisecond {
 		poll()
+	}
+}
+
+func fastFlashDelay() {
+	waitDelay(90 * time.Millisecond)
+}
+
+func waitDelay(delay time.Duration) {
+	t0 := time.Now()
+	for time.Since(t0) < delay {
+		pollFast()
 	}
 }
 
