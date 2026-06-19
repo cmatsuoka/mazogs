@@ -503,10 +503,7 @@ func gameLoop(g *Game) {
 
 	switch code {
 	case maze.InternalWall:
-		g.moving = false
-		g.tick()
-		showPlayerStanding(g)
-		stepDelay()
+		stopAtBlockedTile(g, false)
 	case maze.Empty, maze.Trail, maze.ThisWay:
 		movePlayer(g, pos)
 	case maze.Mazog, maze.Mazog2:
@@ -514,6 +511,11 @@ func gameLoop(g *Game) {
 		g.movesRemaining += g.movesKill
 		fightMazog(g, pos)
 	case maze.Treasure, maze.Treasure2:
+		if !canProcessBlockedInteraction(g, code) {
+			stopAtBlockedTile(g, true)
+			graphics.Present()
+			return
+		}
 		m := g.maze
 		m.Map()[m.ExitPos()] = maze.Exit // place exit in the maze
 		if g.hasSword {
@@ -524,10 +526,17 @@ func gameLoop(g *Game) {
 		}
 		g.hasTreasure = true
 		g.moving = false
+		graphics.ClearKeys()
 		g.tick()
 		showPlayerStanding(g) // player stays at current position; assembly sets code at DE not HL
 		stepDelay()
 	case maze.Prisoner, maze.Prisoner2:
+		if !canProcessBlockedInteraction(g, code) {
+			stopAtBlockedTile(g, true)
+			graphics.Present()
+			return
+		}
+		graphics.ClearKeys()
 		g.tick()
 		showPlayerStanding(g)
 		prisonerAnswerDelay()
@@ -543,6 +552,11 @@ func gameLoop(g *Game) {
 		g.moving = false
 		stepDelay()
 	case maze.Sword:
+		if !canProcessBlockedInteraction(g, code) {
+			stopAtBlockedTile(g, true)
+			graphics.Present()
+			return
+		}
 		m := g.maze
 		g.tick()
 		if g.hasSword {
@@ -560,6 +574,7 @@ func gameLoop(g *Game) {
 			showPlayerStanding(g)
 		}
 		g.moving = false
+		graphics.ClearKeys()
 		stepDelay()
 	case maze.Exit:
 		// BASIC 3014 / Assembly L4BDF: player reached the exit with the treasure.
@@ -569,6 +584,36 @@ func gameLoop(g *Game) {
 
 	moveAllMazogs(g)
 	graphics.Present()
+}
+
+// canProcessBlockedInteraction allows prisoner, sword, and treasure actions
+// only after the player has already stopped next to the blocked tile. This
+// prevents unintentional interactions with the tile.
+func canProcessBlockedInteraction(g *Game, code byte) bool {
+	if g.moving {
+		return false
+	}
+
+	switch code {
+	case maze.Treasure, maze.Treasure2, maze.Prisoner, maze.Prisoner2, maze.Sword:
+		return true
+	default:
+		return false
+	}
+}
+
+// stopAtBlockedTile handles a blocked move attempt and can optionally discard
+// the current input so the next interaction requires a fresh directional press.
+func stopAtBlockedTile(g *Game, requireFreshPress bool) {
+	g.moving = false
+	if requireFreshPress {
+		// Discard the current held direction so a blocked approach does not
+		// turn into an interaction unless the player presses again.
+		graphics.ClearKeys()
+	}
+	g.tick()
+	showPlayerStanding(g)
+	stepDelay()
 }
 
 func moveAllMazogs(g *Game) {
