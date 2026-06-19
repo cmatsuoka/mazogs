@@ -757,53 +757,9 @@ func (g *Game) tick() {
 }
 
 func movePlayer(g *Game, pos int) {
-	code := g.maze.Map()[g.maze.PlayerPos]
-
-	updatePlayer := func(code, playerWithTreasure, playerWithTreasure2, playerWithSword, playerWithSword2, player, player2 byte) byte {
-		if g.hasTreasure {
-			if code == playerWithTreasure {
-				code = playerWithTreasure2
-			} else {
-				code = playerWithTreasure
-			}
-		} else if g.hasSword {
-			if code == playerWithSword {
-				code = playerWithSword2
-			} else {
-				code = playerWithSword
-			}
-		} else {
-			if code == player {
-				code = player2
-			} else {
-				code = player
-			}
-		}
-		return code
-	}
-
-	switch g.direction {
-	case directionRight:
-		code = updatePlayer(code,
-			maze.PlayerWithTreasureRight, maze.PlayerWithTreasureRight2,
-			maze.PlayerWithSwordRight, maze.PlayerWithSwordRight2,
-			maze.PlayerRight, maze.PlayerRight2)
-	case directionUp:
-		code = updatePlayer(code,
-			maze.PlayerWithTreasureUp, maze.PlayerWithTreasureUp2,
-			maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2,
-			maze.PlayerUpDown, maze.PlayerUpDown2)
-	case directionDown:
-		code = updatePlayer(code,
-			maze.PlayerWithTreasureDown, maze.PlayerWithTreasureDown2,
-			maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2,
-			maze.PlayerUpDown, maze.PlayerUpDown2)
-	case directionLeft:
-		code = updatePlayer(code,
-			maze.PlayerWithTreasureLeft, maze.PlayerWithTreasureLeft2,
-			maze.PlayerWithSwordLeft, maze.PlayerWithSwordLeft2,
-			maze.PlayerLeft, maze.PlayerLeft2)
-	}
+	current := g.maze.Map()[g.maze.PlayerPos]
+	first, second := playerMoveSprites(g.direction, g.hasTreasure, g.hasSword)
+	code := toggleSprite(current, first, second)
 
 	mazeMap := g.maze.Map()
 	// Set the maze code for the player at the new maze position.
@@ -829,6 +785,52 @@ func movePlayer(g *Game, pos int) {
 
 	g.tick()
 	showSprites(g.maze, 5)
+}
+
+func playerMoveSprites(direction int, hasTreasure, hasSword bool) (byte, byte) {
+	switch direction {
+	case directionRight:
+		if hasTreasure {
+			return maze.PlayerWithTreasureRight, maze.PlayerWithTreasureRight2
+		}
+		if hasSword {
+			return maze.PlayerWithSwordRight, maze.PlayerWithSwordRight2
+		}
+		return maze.PlayerRight, maze.PlayerRight2
+	case directionUp:
+		if hasTreasure {
+			return maze.PlayerWithTreasureUp, maze.PlayerWithTreasureUp2
+		}
+		if hasSword {
+			return maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2
+		}
+		return maze.PlayerUpDown, maze.PlayerUpDown2
+	case directionDown:
+		if hasTreasure {
+			return maze.PlayerWithTreasureDown, maze.PlayerWithTreasureDown2
+		}
+		if hasSword {
+			return maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2
+		}
+		return maze.PlayerUpDown, maze.PlayerUpDown2
+	case directionLeft:
+		if hasTreasure {
+			return maze.PlayerWithTreasureLeft, maze.PlayerWithTreasureLeft2
+		}
+		if hasSword {
+			return maze.PlayerWithSwordLeft, maze.PlayerWithSwordLeft2
+		}
+		return maze.PlayerLeft, maze.PlayerLeft2
+	default:
+		return maze.PlayerStanding, maze.PlayerStanding
+	}
+}
+
+func toggleSprite(current, first, second byte) byte {
+	if current == first {
+		return second
+	}
+	return first
 }
 
 func decrementTimer(g *Game) {
