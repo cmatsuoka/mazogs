@@ -2,48 +2,89 @@ package graphics
 
 import (
 	"fmt"
-	"os"
-	"unsafe"
+	"strings"
+	"unicode"
 
-	"github.com/veandco/go-sdl2/sdl"
+	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 var (
-	window    *sdl.Window
-	renderer  *sdl.Renderer
-	screen    *sdl.Texture
-	fontAtlas *sdl.Texture
+	window        *sdl.Window
+	renderer      *sdl.Renderer
+	screen        *sdl.Texture
+	fontAtlas     *sdl.Texture
+	quitRequested bool
 
 	keyPressed bool
 	keyValue   string
 	keyLatch   string // set on KEYDOWN, cleared only when consumed by InKey
 )
 
+const (
+	internalWidth  = 256
+	internalHeight = 192
+)
+
 func Init(title string, width, height int32) error {
-	sdl.SetHint(sdl.HINT_RENDER_SCALE_QUALITY, "1")
+	if err := sdl.LoadLibrary(sdl.Path()); err != nil {
+		return fmt.Errorf("can't load SDL library: %s", err)
+	}
+	defer func() {
+		if window == nil {
+			_ = sdl.CloseLibrary()
+		}
+	}()
+
+	if err := sdl.SetAppMetadata("Mazogs", "dev", "github.com.cmatsuoka.mazogs"); err != nil {
+		return fmt.Errorf("can't set SDL app metadata: %s", err)
+	}
+
+	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
+		return fmt.Errorf("can't initialize SDL video: %s", err)
+	}
+	defer func() {
+		if window == nil {
+			sdl.Quit()
+		}
+	}()
 
 	var err error
-	window, err = sdl.CreateWindow(title, sdl.WINDOWPOS_UNDEFINED,
-		sdl.WINDOWPOS_UNDEFINED, width, height, sdl.WINDOW_SHOWN)
+	window, renderer, err = sdl.CreateWindowAndRenderer(title, int(width), int(height), sdl.WINDOW_HIGH_PIXEL_DENSITY)
 	if err != nil {
-		return fmt.Errorf("can't create window: %s", err)
+		return fmt.Errorf("can't create window and renderer: %s", err)
+	}
+	defer func() {
+		if screen == nil {
+			if renderer != nil {
+				renderer.Destroy()
+				renderer = nil
+			}
+			if window != nil {
+				window.Destroy()
+				window = nil
+			}
+		}
+	}()
+
+	if err := renderer.SetVSync(1); err != nil {
+		return fmt.Errorf("can't enable vsync: %s", err)
+	}
+	if err := renderer.SetLogicalPresentation(internalWidth, internalHeight, sdl.LOGICAL_PRESENTATION_STRETCH); err != nil {
+		return fmt.Errorf("can't set logical presentation: %s", err)
 	}
 
-	renderer, err = sdl.CreateRenderer(window, -1, sdl.RENDERER_ACCELERATED|sdl.RENDERER_PRESENTVSYNC)
-	if err != nil {
-		return fmt.Errorf("can't create renderer: %s", err)
-	}
-
-	screen, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_TARGET, 256, 192)
+	screen, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_TARGET, internalWidth, internalHeight)
 	if err != nil {
 		return fmt.Errorf("can't create screen texture: %s", err)
 	}
 	_ = screen.SetBlendMode(sdl.BLENDMODE_NONE)
+	_ = screen.SetScaleMode(sdl.SCALEMODE_LINEAR)
 
-	fontAtlas, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_TARGET, 128, 64)
+	fontAtlas, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_STATIC, 128, 64)
 	if err != nil {
 		return fmt.Errorf("can't create fontAtlas texture: %s", err)
 	}
+	_ = fontAtlas.SetScaleMode(sdl.SCALEMODE_LINEAR)
 
 	if err := renderer.SetRenderTarget(screen); err != nil {
 		return fmt.Errorf("can't set render target: %s", err)
@@ -56,74 +97,83 @@ func Init(title string, width, height int32) error {
 	buildFontAtlas()
 
 	_ = renderer.Clear()
+	quitRequested = false
 
 	return nil
 }
 
 func Deinit() {
 	if screen != nil {
-		_ = screen.Destroy()
+		screen.Destroy()
 	}
 	if fontAtlas != nil {
-		_ = fontAtlas.Destroy()
+		fontAtlas.Destroy()
+	}
+	if renderer != nil {
+		renderer.Destroy()
 	}
 	if window != nil {
-		_ = window.Destroy()
+		window.Destroy()
+		window = nil
 	}
+	renderer = nil
+	screen = nil
+	fontAtlas = nil
+	quitRequested = false
+	keyPressed = false
+	keyValue = ""
+	keyLatch = ""
+	sdl.Quit()
+	_ = sdl.CloseLibrary()
 }
 
 func Present() {
+	if renderer == nil || screen == nil {
+		return
+	}
 	if err := renderer.SetRenderTarget(nil); err != nil {
-		fmt.Fprintf(os.Stderr, "Present: SetRenderTarget: %v\n", err)
 		return
 	}
 	// Always restore the render target to screen once we have switched away
 	// from it, even if Copy fails. This keeps the renderer in a consistent
 	// state for subsequent Present or renderChar calls.
 	defer func() { _ = renderer.SetRenderTarget(screen) }()
-	if err := renderer.Copy(screen, nil, nil); err != nil {
-		fmt.Fprintf(os.Stderr, "Present: Copy: %v\n", err)
+	if err := renderer.RenderTexture(screen, nil, nil); err != nil {
 		return
 	}
-	renderer.Present()
+	_ = renderer.Present()
 }
 
-func ProcessEvents() {
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch event := event.(type) {
-		case *sdl.WindowEvent:
-			switch event.Event {
-			case sdl.WINDOWEVENT_CLOSE:
-				os.Exit(0)
-			}
+func ProcessEvents() bool {
+	var event sdl.Event
+	for sdl.PollEvent(&event) {
+		handleEvent(event)
+	}
+	return quitRequested
+}
 
-		case *sdl.KeyboardEvent:
-			if event.Repeat != 0 {
-				break
-			}
-			if event.Type == sdl.KEYDOWN {
-				keyPressed = true
-				keyValue = string(event.Keysym.Sym)
-				keyLatch = keyValue
-			} else {
-				// Only clear keyValue if the released key is the one
-				// currently tracked. This prevents an unrelated key
-				// release (modifier tap, X11 repeat artifact) from
-				// interrupting a held movement key — matching the
-				// ZX-81 LAST_K behaviour which always reflects the
-				// physical keyboard state.
-				if keyValue == string(event.Keysym.Sym) {
-					keyValue = ""
-				}
-			}
+func normalizeKeyName(name string) string {
+	if len(name) == 1 {
+		r := rune(name[0])
+		if unicode.IsLetter(r) {
+			return strings.ToLower(name)
 		}
 	}
+	return name
 }
 
 func WaitKey() string {
 	keyPressed = false
 	for !keyPressed {
-		ProcessEvents()
+		if quitRequested {
+			return ""
+		}
+
+		var event sdl.Event
+		if err := sdl.WaitEvent(&event); err != nil {
+			continue
+		}
+		handleEvent(event)
 	}
 	// Return keyLatch rather than keyValue: keyLatch is set on KEYDOWN and
 	// only cleared when consumed, so it holds the key even if a KEYUP event
@@ -133,13 +183,52 @@ func WaitKey() string {
 	return k
 }
 
+func QuitRequested() bool {
+	return quitRequested
+}
+
+func shouldQuitForWindowEvent(event sdl.Event) bool {
+	if window == nil {
+		return true
+	}
+	windowID, err := window.ID()
+	if err != nil {
+		return true
+	}
+	return event.WindowEvent().WindowID == windowID
+}
+
+func handleEvent(event sdl.Event) {
+	switch event.Type {
+	case sdl.EVENT_QUIT:
+		quitRequested = true
+	case sdl.EVENT_WINDOW_CLOSE_REQUESTED:
+		if shouldQuitForWindowEvent(event) {
+			quitRequested = true
+		}
+	case sdl.EVENT_KEY_DOWN:
+		kev := event.KeyboardEvent()
+		if kev.Repeat {
+			return
+		}
+		keyPressed = true
+		keyValue = normalizeKeyName(kev.Key.KeyName())
+		keyLatch = keyValue
+	case sdl.EVENT_KEY_UP:
+		kev := event.KeyboardEvent()
+		if keyValue == normalizeKeyName(kev.Key.KeyName()) {
+			keyValue = ""
+		}
+	}
+}
+
 func renderChar(row, col int, c byte) {
 	if c > 64 {
 		c = 64 + (c & 0x7f)
 	}
-	src := sdl.Rect{X: int32((c & 0x0f) << 3), Y: int32((c >> 4) << 3), W: 8, H: 8}
-	dst := sdl.Rect{X: int32(col << 3), Y: int32(row << 3), W: 8, H: 8}
-	_ = renderer.Copy(fontAtlas, &src, &dst)
+	src := sdl.FRect{X: float32((c & 0x0f) << 3), Y: float32((c >> 4) << 3), W: 8, H: 8}
+	dst := sdl.FRect{X: float32(col << 3), Y: float32(row << 3), W: 8, H: 8}
+	_ = renderer.RenderTexture(fontAtlas, &src, &dst)
 }
 
 func buildFontAtlas() {
@@ -147,7 +236,7 @@ func buildFontAtlas() {
 	for i := byte(0); i < 128; i++ {
 		dst := sdl.Rect{X: int32((i & 0x0f) << 3), Y: int32((i >> 4) << 3), W: 8, H: 8}
 		buildCharPixels(font[i], &pixels)
-		_ = fontAtlas.Update(&dst, unsafe.Pointer(&pixels[0]), 8*3)
+		_ = fontAtlas.Update(&dst, pixels[:], 8*3)
 	}
 }
 

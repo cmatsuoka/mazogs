@@ -38,7 +38,7 @@ requiring the player to balance exploration with efficiency.
 
 ## Building
 
-Requires Go 1.22+ and SDL2 development libraries.
+Requires Go 1.25+ and SDL3 development libraries.
 
 ```sh
 go build
@@ -54,6 +54,5 @@ go build
 To use Wayland directly (instead of XWayland):
 
 ```sh
-SDL_VIDEODRIVER=wayland ./mazogs
+SDL_VIDEO_DRIVER=wayland ./mazogs
 ```
-

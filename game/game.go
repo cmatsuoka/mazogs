@@ -78,24 +78,46 @@ func New() *Game {
 
 // poll pumps SDL events and sleeps for idlePollMs to yield CPU in idle loops.
 func poll() {
-	graphics.ProcessEvents()
+	if graphics.ProcessEvents() {
+		return
+	}
 	time.Sleep(idlePollMs * time.Millisecond)
 }
 
 // pollFast is like poll but sleeps for a short duration for tight animation loops.
 func pollFast() {
-	graphics.ProcessEvents()
+	if graphics.ProcessEvents() {
+		return
+	}
 	time.Sleep(10 * time.Millisecond)
 }
 
 func (g *Game) Run() error {
 	for {
+		if graphics.QuitRequested() {
+			return nil
+		}
 		graphics.ClearKeys()
 		showIntro(g)
+		if graphics.QuitRequested() {
+			return nil
+		}
 		level := whichGame(g)
+		if graphics.QuitRequested() {
+			return nil
+		}
 		initialize(g, level)
+		if graphics.QuitRequested() {
+			return nil
+		}
 		chooseEntranceSide(g)
+		if graphics.QuitRequested() {
+			return nil
+		}
 		key := situationReport(g)
+		if graphics.QuitRequested() {
+			return nil
+		}
 		buySword(g, key)
 		play(g)
 	}
@@ -251,7 +273,9 @@ func initialize(g *Game, level int) {
 	// No extra delay is added if generation itself took longer.
 	deadline := start.Add(5 * time.Second)
 	for remaining := time.Until(deadline); remaining > 0; remaining = time.Until(deadline) {
-		graphics.ProcessEvents()
+		if graphics.ProcessEvents() {
+			return
+		}
 		sleep := remaining
 		if sleep > 10*time.Millisecond {
 			sleep = 10 * time.Millisecond
@@ -287,6 +311,9 @@ func play(g *Game) {
 	graphics.ClearKeys() // discard any key state from previous screens
 	for {
 		gameLoop(g)
+		if graphics.QuitRequested() {
+			return
+		}
 		if g.killed || g.starved || g.exited {
 			break
 		}
@@ -348,6 +375,9 @@ func scoreScreen(g *Game) {
 	// BASIC 4522-4534: wait for M or G.
 	for {
 		graphics.WaitKey()
+		if graphics.QuitRequested() {
+			return
+		}
 		switch graphics.InKey() {
 		case "g", "G":
 			return
@@ -359,7 +389,9 @@ func scoreScreen(g *Game) {
 }
 
 func gameLoop(g *Game) {
-	graphics.ProcessEvents() // pump SDL events every iteration to handle KEYUP reliably
+	if graphics.ProcessEvents() {
+		return
+	}
 
 	if g.wayShown {
 		// The assembly resets FRAMES to $FFFF and clears when the high byte
@@ -876,6 +908,9 @@ func chooseEntranceSide(g *Game) {
 	var dir int
 	for {
 		graphics.WaitKey()
+		if graphics.QuitRequested() {
+			return
+		}
 		key := graphics.InKey()
 		if key == "l" {
 			dir = directionLeft
@@ -897,6 +932,9 @@ func chooseEntranceSide(g *Game) {
 	graphics.PrintAt(21, 2, "PRESS ANY KEY FOR INFORMATION")
 	graphics.Present()
 	graphics.WaitKey()
+	if graphics.QuitRequested() {
+		return
+	}
 
 	fillScreen(zxInvChequerboard)
 	graphics.PrintAt(10, 7, "CHECKING DISTANCE")
