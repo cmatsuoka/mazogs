@@ -5,7 +5,89 @@ import (
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
+// showMapViewer displays the post-game maze in full screen.
+// Mirrors BASIC 3200-4534.
+func showMapViewer(g *Game) {
+	area := g.maze.Map()
+	scrollRow, scrollCol := 0, 0
+
+	// Render initial frame before entering the input loop.
+	fillScreen(zxInvChequerboard)
+	for dr := 0; dr < 24; dr++ {
+		for dc := 0; dc < 32; dc++ {
+			pos := (scrollRow+dr)*maze.MazeColumns + (scrollCol + dc)
+			if pos >= 0 && pos < len(area) {
+				graphics.PutZXChar(dr, dc, area[pos])
+			}
+		}
+	}
+	graphics.Present()
+
+	for {
+		if graphics.QuitRequested() {
+			return
+		}
+		key := graphics.InKey()
+		moved := false
+		switch key {
+		case "d", "j", "Right":
+			if scrollCol < 32 {
+				scrollCol++
+				moved = true
+			}
+		case "a", "h", "Left":
+			if scrollCol > 0 {
+				scrollCol--
+				moved = true
+			}
+		case "x", "s", "Down":
+			if scrollRow < 24 {
+				scrollRow++
+				moved = true
+			}
+		case "w", "Up":
+			if scrollRow > 0 {
+				scrollRow--
+				moved = true
+			}
+		case "p":
+			scrollRow, scrollCol = 0, 0
+			showRoute(g)
+			insertMazogsAndMarkPos(g)
+			waitKeyRelease()
+			moved = true
+		case "0":
+			scrollRow, scrollCol = 0, 0
+			removeRoute(g)
+			insertMazogsAndMarkPos(g)
+			waitKeyRelease()
+			moved = true
+		case "g", "G":
+			return
+		}
+
+		if moved {
+			fillScreen(zxInvChequerboard)
+			for dr := 0; dr < 24; dr++ {
+				for dc := 0; dc < 32; dc++ {
+					pos := (scrollRow+dr)*maze.MazeColumns + (scrollCol + dc)
+					if pos >= 0 && pos < len(area) {
+						graphics.PutZXChar(dr, dc, area[pos])
+					}
+				}
+			}
+			graphics.Present()
+			if key != "p" && key != "0" {
+				stepDelay()
+			}
+		} else {
+			poll()
+		}
+	}
+}
+
 // displayMazeWindow renders a 16x16 cell window of raw maze codes starting at
+
 // startPos, with the top-left corner placed at screen position (row=4, col=8).
 // Cells outside the maze bounds are shown as InternalWall.
 func displayMazeWindow(area []byte, startPos int) {
@@ -28,73 +110,6 @@ func displayMazeWindow(area []byte, startPos int) {
 			}
 			graphics.PutZXChar(screenRow+r, screenCol+c, code)
 		}
-	}
-}
-
-// showMapViewer displays the post-game map explorer. The player can scroll the
-// maze, toggle the route, and exit with Q. Mirrors BASIC 1000-1266.
-func showMapViewer(g *Game) {
-	fillScreen(zxInvChequerboard)
-
-	// BASIC 1000-1002: mark relocated treasure with inverse asterisk.
-	area := g.maze.Map()
-	treasurePos := g.maze.TreasurePos()
-	if area[treasurePos] == maze.Treasure || area[treasurePos] == maze.Treasure2 {
-		area[treasurePos] = 0x97 // inverse asterisk
-	}
-
-	// BASIC 1006-1010: start at maze top-left.
-	// BASIC 1041: clamp scroll to [MST, MST+1568]; 1568 = 24*64+32 keeps the
-	// 16x16 viewport from wrapping across row boundaries.
-	const maxScrollPos = 1568
-	scrollPos := 0
-
-	for {
-		key := graphics.InKey()
-
-		switch key {
-		case "j", "Right":
-			// BASIC 1045-1047: scroll right one column.
-			scrollPos++
-		case "h", "Left":
-			// BASIC 1048-1050: scroll left one column.
-			scrollPos--
-		case "s", "Down":
-			// BASIC 1051: scroll down one row.
-			scrollPos += maze.MazeColumns
-		case "w", "Up":
-			// BASIC 1052: scroll up one row.
-			scrollPos -= maze.MazeColumns
-		case "p":
-			// BASIC 1052 / 1100-1116: show route to treasure.
-			showRoute(g)
-			insertMazogsAndMarkPos(g)
-			waitKeyRelease()
-		case "0":
-			// BASIC 1054 / 1200-1212: remove route.
-			removeRoute(g)
-			waitKeyRelease()
-		case "g", "q":
-			// BASIC 1053: quit map viewer.
-			return
-		}
-
-		// BASIC 1055-1057: clamp scroll range.
-		if scrollPos < 0 {
-			scrollPos = 0
-		} else if scrollPos > maxScrollPos {
-			scrollPos = maxScrollPos
-		}
-
-		// Only render after a key action to match original behavior.
-		if key != "" {
-			fillScreen(zxInvChequerboard)
-			displayMazeWindow(area, scrollPos)
-			graphics.Present()
-		}
-
-		// Wait for next input.
-		stepDelay()
 	}
 }
 

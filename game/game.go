@@ -31,6 +31,7 @@ type Game struct {
 	level          int
 	maze           *maze.Maze
 	mazogTable     []int
+	playerFinalPos int
 
 	hasSword        bool
 	hasTreasure     bool
@@ -325,6 +326,8 @@ func play(g *Game) {
 		}
 	}
 
+	g.playerFinalPos = g.maze.PlayerPos
+
 	// BASIC 3012-3040: show end-game message based on cause of death/exit.
 	fillScreen(zxBlack)
 	if g.starved {
@@ -342,50 +345,6 @@ func play(g *Game) {
 		showExitScene(g)
 	}
 	scoreScreen(g)
-}
-
-// scoreScreen fills the screen and shows the score if the player exited with
-// the treasure on a non-easy level, then waits for G (new game) or M (examine
-// maze, not yet implemented). BASIC 3200-4534.
-func scoreScreen(g *Game) {
-	// BASIC 3200: GOSUB SUR fills with whatever 17370 holds at this point.
-	// For killed and exited paths, BASIC 6041 has restored 17370 to 136
-	// (chequerboard). For the starved path, 17370 was set to 128 (black) at
-	// BASIC 3100 and 3140 jumps past 3200, so the black fill from BASIC 3116
-	// stays in effect.
-	if g.starved {
-		fillScreen(zxBlack) // BASIC 3116: black; starved path skips 3200
-	} else {
-		fillScreen(zxInvChequerboard) // BASIC 3200: chequerboard; killed/exited paths
-	}
-
-	// BASIC 3216: show score only when exited with treasure and not TRY IT OUT.
-	if g.exited && g.level != levelEasy {
-		graphics.PrintAt(4, 13, "score")
-		graphics.PrintAt(7, 2, fmt.Sprintf("MOVES ALLOWED = %d", g.movesAllowed))
-		graphics.PrintAt(9, 0, fmt.Sprintf("``MOVES LEFT = %d", g.movesRemaining))
-		graphics.PrintAt(11, 0, fmt.Sprintf("``SCORE = %d PER CENT", g.movesRemaining*100/g.movesAllowed))
-	}
-
-	// BASIC 4500-4520.
-	graphics.PrintAt(18, 2, `PRESS "M" TO EXAMINE THE MAZE`)
-	graphics.PrintAt(20, 2, `PRESS "G" FOR ANOTHER GAME`)
-	graphics.Present()
-
-	// BASIC 4522-4534: wait for M or G.
-	for {
-		graphics.WaitKey()
-		if graphics.QuitRequested() {
-			return
-		}
-		switch graphics.InKey() {
-		case "g", "G":
-			return
-		case "m", "M":
-			showMapViewer(g)
-			return
-		}
-	}
 }
 
 func gameLoop(g *Game) {
@@ -1094,5 +1053,39 @@ func firstStepDelay() {
 	t0 := time.Now()
 	for time.Since(t0) < firstStepDelayMs*time.Millisecond {
 		poll()
+	}
+}
+
+// scoreScreen fills the screen black, shows the score if the player exited with
+// the treasure on a non-easy level, then waits for G (new game) or M (examine
+// maze). BASIC 3200-4534.
+func scoreScreen(g *Game) {
+	// BASIC 3200: fill display with black.
+	fillScreen(0x80)
+
+	// BASIC 3216: show score only when exited with treasure and not TRY IT OUT.
+	if g.exited && g.level != levelEasy {
+		graphics.PrintAt(4, 13, "score")
+		graphics.PrintAt(7, 2, fmt.Sprintf("MOVES ALLOWED = %d", g.movesAllowed))
+		graphics.PrintAt(8, 0, fmt.Sprintf("\x88\x88MOVES LEFT = %d", g.movesRemaining))
+		graphics.PrintAt(9, 0, fmt.Sprintf("\x88\x88SCORE = %d PER CENT", g.movesRemaining*100/g.movesAllowed))
+	}
+
+	// BASIC 4500-4520.
+	graphics.PrintAt(18, 2, `PRESS "M" TO EXAMINE THE MAZE`)
+	graphics.PrintAt(20, 2, `PRESS "G" FOR ANOTHER GAME`)
+	graphics.Present()
+
+	for {
+		key := graphics.WaitKey()
+		if graphics.QuitRequested() {
+			return
+		}
+		switch key {
+		case "g", "G":
+			return
+		case "m", "M":
+			showMapViewer(g)
+		}
 	}
 }
