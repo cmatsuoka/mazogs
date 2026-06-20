@@ -1,16 +1,25 @@
-# Mazogs
+<!--
+         ▄▀▀▀▄ ▄▀▀▀▄    █▄   ▄█  ▄▀▄  ▀▀▀▀█ ▄▀▀▀▄ ▄▀▀▀▄ ▄▀▀▀▄
+         █     █   █    █ ▀▄▀ █ █   █    ▄▀ █   █ █     █
+         █     █   █ ▄▄ █     █ █   █  ▄▀   █   █ █      ▀▀▀▄
+         █ ▀▀█ █   █    █     █ █▄▄▄█ █     █   █ █ ▀▀█     █
+         ▀▄▄▄▀ ▀▄▄▄▀    █     █ █   █ █▄▄▄▄ ▀▄▄▄▀ ▀▄▄▄▀ ▀▄▄▄▀
 
-```
                           ▄▄ ▄       ▄▄▀    ▀▄▄
                        ▄▄▄█▀ █       █▄▄▄██▄▄▄█
                        █ ██▀▀█          ████
                         █▀▀▀█         ▄▀▀██▀▀▄
                       █▀▀   ▀▀        ▀▀    ▀▀
-```
+-->
+# Go-Mazogs
 
 A Go port of **Mazogs**, the classic maze game originally written by Don Priestley
-and published by Bug-Byte Software Ltd in 1981 for the Sinclair ZX-81. This
-implementation is based on the [disassembly by Paul Farrow](http://www.fruitcake.plus.com/Sinclair/ZX81/Disassemblies/Mazogs.htm).
+for the Sinclair ZX-81. This implementation is based on the [disassembly by
+Paul Farrow](http://www.fruitcake.plus.com/Sinclair/ZX81/Disassemblies/Mazogs.htm).
+
+*DISCLAIMER: This is an unofficial, independent rewrite of the 1982 game Mazogs
+using Go and SDL3. It is not affiliated with, endorsed by, or associated with
+the original creators or copyright holders of Mazogs.*
 
 
 ## About the game

@@ -1,6 +1,6 @@
 Mazogs Maze Generation Algorithm
 =================================
-Source: maze/maze.go vs docs/MazogsDisassembly.asm (ZX-81 original)
+Source: maze/maze.go vs MazogsDisassembly.asm (ZX-81 original)
 
 
 OVERVIEW
@@ -40,7 +40,7 @@ directions are checked before declaring a dead end.
 
 
 CAN-GO CHECKS (canGoLeft/Right/Up/Down)
------------------------------------------
+---------------------------------------
 Before advancing in a direction, the routine checks that doing so will not
 merge two existing paths (i.e., it would create a passage wide enough to
 connect two independent corridors). The check pattern for each direction:
@@ -61,7 +61,7 @@ Empty) and pos advances by one step in the chosen direction.
 
 
 NEW START POSITION (newStartPosition / L418C)
-----------------------------------------------
+---------------------------------------------
 When no direction is available at the current position:
 
   1. Check termination (dead-end counter in Go; frame-counter timeout on ZX-81).
@@ -80,7 +80,7 @@ When no direction is available at the current position:
 
 
 STARTING POSITION FOR PATH GENERATION
----------------------------------------
+-------------------------------------
   Both the assembly and Go code start carving from the Treasure position.
 
   In the assembly, BASIC 6146-6148 sets L4088 (the player/path-start
@@ -93,7 +93,7 @@ STARTING POSITION FOR PATH GENERATION
 
 
 CONSTRUCT MAZE AREA (constructMazeArea / L4118)
--------------------------------------------------
+-----------------------------------------------
   - Top row    (i < 64):           ExternalWall
   - Bottom row (i > 47*64):        ExternalWall
   - Left col   (i % 64 == 0):      ExternalWall
@@ -104,7 +104,7 @@ CONSTRUCT MAZE AREA (constructMazeArea / L4118)
 
 
 TERMINATION CRITERION
-----------------------
+---------------------
   Original ZX-81: wall-clock timeout of 5.12-10.24 seconds (measured via
   the TV-frame interrupt counter). This was the simplest option available
   on constrained hardware.
