@@ -14,6 +14,8 @@ var (
 	screen        *sdl.Texture
 	fontAtlas     *sdl.Texture
 	quitRequested bool
+	minWindowW    int32
+	minWindowH    int32
 
 	keyPressed bool
 	keyValue   string
@@ -23,9 +25,13 @@ var (
 const (
 	internalWidth  = 256
 	internalHeight = 192
+	aspectRatio    = float32(internalWidth) / float32(internalHeight)
 )
 
 func Init(title string, width, height int32) error {
+	minWindowW = width
+	minWindowH = height
+
 	if err := sdl.LoadLibrary(sdl.Path()); err != nil {
 		return fmt.Errorf("can't load SDL library: %s", err)
 	}
@@ -49,7 +55,7 @@ func Init(title string, width, height int32) error {
 	}()
 
 	var err error
-	window, renderer, err = sdl.CreateWindowAndRenderer(title, int(width), int(height), sdl.WINDOW_HIGH_PIXEL_DENSITY)
+	window, renderer, err = sdl.CreateWindowAndRenderer(title, int(width), int(height), sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_RESIZABLE)
 	if err != nil {
 		return fmt.Errorf("can't create window and renderer: %s", err)
 	}
@@ -69,8 +75,18 @@ func Init(title string, width, height int32) error {
 	if err := renderer.SetVSync(1); err != nil {
 		return fmt.Errorf("can't enable vsync: %s", err)
 	}
-	if err := renderer.SetLogicalPresentation(internalWidth, internalHeight, sdl.LOGICAL_PRESENTATION_STRETCH); err != nil {
+	if err := renderer.SetLogicalPresentation(internalWidth, internalHeight, sdl.LOGICAL_PRESENTATION_LETTERBOX); err != nil {
 		return fmt.Errorf("can't set logical presentation: %s", err)
+	}
+
+	if err := window.SetResizable(true); err != nil {
+		return fmt.Errorf("can't make window resizable: %s", err)
+	}
+	if err := window.SetMinimumSize(minWindowW, minWindowH); err != nil {
+		return fmt.Errorf("can't set minimum window size: %s", err)
+	}
+	if err := window.SetAspectRatio(aspectRatio, aspectRatio); err != nil {
+		return fmt.Errorf("can't set window aspect ratio: %s", err)
 	}
 
 	screen, err = renderer.CreateTexture(sdl.PIXELFORMAT_RGB24, sdl.TEXTUREACCESS_TARGET, internalWidth, internalHeight)
@@ -120,11 +136,27 @@ func Deinit() {
 	screen = nil
 	fontAtlas = nil
 	quitRequested = false
+	minWindowW = 0
+	minWindowH = 0
 	keyPressed = false
 	keyValue = ""
 	keyLatch = ""
 	sdl.Quit()
 	_ = sdl.CloseLibrary()
+}
+
+func toggleFullscreen() {
+	if window == nil {
+		return
+	}
+	_ = window.SetFullscreen(!IsFullscreen())
+}
+
+func IsFullscreen() bool {
+	if window == nil {
+		return false
+	}
+	return window.Flags()&sdl.WINDOW_FULLSCREEN != 0
 }
 
 func Present() {
@@ -206,9 +238,19 @@ func handleEvent(event sdl.Event) {
 		if shouldQuitForWindowEvent(event) {
 			quitRequested = true
 		}
+	case sdl.EVENT_WINDOW_EXPOSED,
+		sdl.EVENT_WINDOW_RESIZED,
+		sdl.EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+		if shouldQuitForWindowEvent(event) {
+			Present()
+		}
 	case sdl.EVENT_KEY_DOWN:
 		kev := event.KeyboardEvent()
 		if kev.Repeat {
+			return
+		}
+		if kev.Mod&sdl.KMOD_ALT != 0 && kev.Scancode == sdl.SCANCODE_RETURN {
+			toggleFullscreen()
 			return
 		}
 		keyPressed = true
