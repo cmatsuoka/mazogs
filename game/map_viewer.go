@@ -116,7 +116,7 @@ func displayMazeWindow(area []byte, startPos int) {
 // showRoute resets the maze to show the path from entrance to treasure.
 // Mirrors BASIC 1100-1116.
 func showRoute(g *Game) {
-	graphics.PrintAt(0, 8, "#####SOLVING####")
+	graphics.PrintAt(0, 8, "_____SOLVING____")
 	graphics.Present()
 
 	// Insert treasure at its original location.
