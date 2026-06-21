@@ -234,6 +234,7 @@ func whichGame(g *Game) int {
 				sprites[mazogCode].render(0, 1)
 				sprites[mazogCode].render(0, 3)
 				graphics.Present()
+				stepDelay()
 			}
 			applyLevelSelection(g, true, true, false)
 			return levelHard
@@ -673,6 +674,7 @@ func fightMazog(g *Game, mazogPos int) {
 			maze.Fighting2, maze.Mazog2,
 			maze.Fighting3, maze.Mazog,
 		} {
+			advanceAnimation(g.maze)
 			g.maze.Map()[mazogPos] = frame
 			showSprites(g.maze, 5)
 			graphics.Present()
