@@ -184,6 +184,17 @@ func ProcessEvents() bool {
 	return quitRequested
 }
 
+func isModifierKey(scancode sdl.Scancode) bool {
+	switch scancode {
+	case sdl.SCANCODE_LCTRL, sdl.SCANCODE_RCTRL,
+		sdl.SCANCODE_LSHIFT, sdl.SCANCODE_RSHIFT,
+		sdl.SCANCODE_LALT, sdl.SCANCODE_RALT,
+		sdl.SCANCODE_LGUI, sdl.SCANCODE_RGUI:
+		return true
+	}
+	return false
+}
+
 func normalizeKeyName(name string) string {
 	if len(name) == 1 {
 		r := rune(name[0])
@@ -251,6 +262,9 @@ func handleEvent(event sdl.Event) {
 		}
 		if kev.Mod&sdl.KMOD_ALT != 0 && kev.Scancode == sdl.SCANCODE_RETURN {
 			toggleFullscreen()
+			return
+		}
+		if isModifierKey(kev.Scancode) {
 			return
 		}
 		keyPressed = true
