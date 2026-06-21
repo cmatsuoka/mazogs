@@ -149,7 +149,7 @@ func removeRoute(g *Game) {
 func insertMazogsAndMarkPos(g *Game) {
 	area := g.maze.Map()
 	g.maze.InsertMazogs(g.mazogTable)
-	area[g.maze.PlayerPos] = maze.ExternalWall
+	area[g.playerFinalPos] = maze.ExternalWall
 }
 
 // waitKeyRelease polls until the currently held key is released, pumping SDL
