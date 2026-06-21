@@ -5,14 +5,20 @@ import (
 	"github.com/cmatsuoka/mazogs/maze"
 )
 
+const (
+	spriteGridColumns  = 5 // total columns in the sprite rendering grid
+	spriteGridRows     = 4 // total rows in the sprite rendering grid
+	introSpriteColumns = 4 // columns shown during intro (leaves room for title text)
+)
+
 // advanceAnimation toggles animated maze codes by one step. Call this once
 // per game tick (player step or equivalent action) to drive all sprite
 // animation at the player-movement cadence.
 func advanceAnimation(m *maze.Maze) {
 	area := m.Map()
 	pos := m.PlayerPos - 2*maze.MazeColumns - 2
-	for c := 0; c < 5; c++ {
-		for r := 0; r < 4; r++ {
+	for c := 0; c < spriteGridColumns; c++ {
+		for r := 0; r < spriteGridRows; r++ {
 			index := pos + r*maze.MazeColumns + c
 			switch area[index] {
 			case maze.Prisoner, maze.Prisoner2,
@@ -63,8 +69,8 @@ func (sp sprite) render(r, c int) {
 // giving a clean wall background independent of the current maze state.
 func renderWallBackground() {
 	wall := sprites[maze.InternalWall]
-	for r := 0; r < 4; r++ {
-		for c := 0; c < 5; c++ {
+	for r := 0; r < spriteGridRows; r++ {
+		for c := 0; c < spriteGridColumns; c++ {
 			wall.render(r, c)
 		}
 	}

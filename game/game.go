@@ -153,7 +153,7 @@ func showIntro(g *Game) {
 	fillScreen(zxInvChequerboard)
 	stepDelay()
 	g.maze.PlayerPos = 470
-	showSprites(g.maze, 4)
+	showSprites(g.maze, introSpriteColumns)
 
 	animateTitle := func(num int) (keyPressed bool) {
 		// scroll "MAZOGS" down the right hand side of the screen
@@ -173,7 +173,7 @@ func showIntro(g *Game) {
 				poll()
 			}
 		}
-		showSprites(g.maze, 5)
+		showSprites(g.maze, spriteGridColumns)
 		return false
 	}
 
@@ -182,7 +182,7 @@ func showIntro(g *Game) {
 		if animateTitle(4) {
 			break
 		}
-		showSprites(g.maze, 5)
+		showSprites(g.maze, spriteGridColumns)
 		graphics.PrintAt(1, 6, "press_a_key_to_start`")
 		if animateTitle(5) {
 			break
@@ -339,7 +339,7 @@ func play(g *Game) {
 		// mazog that killed the player), then redraw and print the death
 		// message 40 times.
 		advanceAnimation(g.maze)
-		showSprites(g.maze, 5)
+		showSprites(g.maze, spriteGridColumns)
 		graphics.Present()
 		flashDeathMessage(g)
 	} else if g.exited {
@@ -478,7 +478,7 @@ func gameLoop(g *Game) {
 		}
 		g.maze.ClearMaze()
 		g.maze.TraceRoute()
-		showSprites(g.maze, 5) // render route markers
+		showSprites(g.maze, spriteGridColumns) // render route markers
 		graphics.Present()     // show immediately so the route is visible during the delay
 		g.wayShown = true
 		g.wayShownAt = time.Now()
@@ -538,7 +538,7 @@ func flashAlternatingMessage(count, row, col int, firstMsg, secondMsg string) {
 func flashDeathMessage(g *Game) {
 	for range 40 {
 		advanceAnimation(g.maze)
-		showSprites(g.maze, 5)
+		showSprites(g.maze, spriteGridColumns)
 		graphics.PrintAt(18, 1, "death__to_all_treasure_seekers")
 		graphics.Present()
 		fastFlashDelay()
@@ -566,7 +566,7 @@ func showExitScene(g *Game) {
 	}
 	area[playerPos] = maze.PlayerWithTreasure
 
-	showSprites(g.maze, 5)
+	showSprites(g.maze, spriteGridColumns)
 	graphics.PrintAt(10, exitCol, "EXIT")
 	graphics.Present()
 	flashAlternatingMessage(60, 18, messageCol, "welcome_back", "WELCOME BACK")
@@ -676,7 +676,7 @@ func fightMazog(g *Game, mazogPos int) {
 		} {
 			advanceAnimation(g.maze)
 			g.maze.Map()[mazogPos] = frame
-			showSprites(g.maze, 5)
+			showSprites(g.maze, spriteGridColumns)
 			graphics.Present()
 			t0 := time.Now()
 			for time.Since(t0) < 90*time.Millisecond {
@@ -714,7 +714,7 @@ func fightMazog(g *Game, mazogPos int) {
 		g.maze.Map()[mazogPos] = maze.Mazog
 		for range 25 {
 			g.tick()
-			showSprites(g.maze, 5)
+			showSprites(g.maze, spriteGridColumns)
 			graphics.Present()
 			fastFlashDelay()
 		}
@@ -757,7 +757,7 @@ func movePlayer(g *Game, pos int) {
 	}
 
 	g.tick()
-	showSprites(g.maze, 5)
+	showSprites(g.maze, spriteGridColumns)
 }
 
 func playerMoveSprites(direction int, hasTreasure, hasSword bool) (byte, byte) {
@@ -853,7 +853,7 @@ func showPlayerStanding(g *Game) {
 		code = maze.PlayerStanding
 	}
 	g.maze.SetPlayerCode(code)
-	showSprites(g.maze, 5)
+	showSprites(g.maze, spriteGridColumns)
 }
 
 // chooseEntranceSide shows the entrance view and waits for the player to press
