@@ -70,6 +70,15 @@ const (
 	zxInvChequerboard byte = 0x88 // inverse checkerboard
 )
 
+// fightFrames is the sequence of sprite codes for each fight animation tick.
+// Defined at package level to avoid allocating a new slice on every iteration
+// of the fight loop (7 allocations per fight).
+var fightFrames = [6]byte{
+	maze.Fighting1, maze.Mazog,
+	maze.Fighting2, maze.Mazog2,
+	maze.Fighting3, maze.Mazog,
+}
+
 func New() *Game {
 	maze := maze.New()
 	return &Game{
@@ -669,11 +678,7 @@ func fightMazog(g *Game, mazogPos int) {
 	// On real ZX-81 each render takes ~90ms; we replicate that here.
 	// Events are pumped during each sleep so KEYUP is processed.
 	for range 7 {
-		for _, frame := range []byte{
-			maze.Fighting1, maze.Mazog,
-			maze.Fighting2, maze.Mazog2,
-			maze.Fighting3, maze.Mazog,
-		} {
+		for _, frame := range fightFrames {
 			advanceAnimation(g.maze)
 			g.maze.Map()[mazogPos] = frame
 			showSprites(g.maze, spriteGridColumns)
