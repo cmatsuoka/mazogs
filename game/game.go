@@ -674,18 +674,8 @@ func moveAllMazogs(g *Game) {
 
 		// Assembly L4FC0-L4FC9: pick a random direction using L40B4 4-way
 		// split: 1=left, 2=right, 3=down, 4=up.
-		quarter := rand.Intn(4) + 1
-		var newPos int
-		switch quarter {
-		case 1:
-			newPos = mazogPos - 1
-		case 2:
-			newPos = mazogPos + 1
-		case 3:
-			newPos = mazogPos + maze.MazeColumns
-		case 4:
-			newPos = mazogPos - maze.MazeColumns
-		}
+		mazogDeltas := [...]int{-1, 1, maze.MazeColumns, -maze.MazeColumns}
+		newPos := mazogPos + mazogDeltas[rand.Intn(4)]
 
 		// Assembly L4FCF: move only into Empty, Trail, or ThisWay cells.
 		code := area[newPos]
