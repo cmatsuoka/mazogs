@@ -79,6 +79,37 @@ var fightFrames = [6]byte{
 	maze.Fighting3, maze.Mazog,
 }
 
+// spritePair holds the two animation frames for a player sprite.
+type spritePair struct {
+	first, second byte
+}
+
+// playerMoveTable maps (direction, state) to the player's animation frames.
+// Direction indices: 0=Left, 1=Right, 2=Up, 3=Down
+// State indices: 0=hasTreasure, 1=hasSword, 2=neither
+var playerMoveTable = [4][3]spritePair{
+	{ // Left
+		{maze.PlayerWithTreasureLeft, maze.PlayerWithTreasureLeft2},
+		{maze.PlayerWithSwordLeft, maze.PlayerWithSwordLeft2},
+		{maze.PlayerLeft, maze.PlayerLeft2},
+	},
+	{ // Right
+		{maze.PlayerWithTreasureRight, maze.PlayerWithTreasureRight2},
+		{maze.PlayerWithSwordRight, maze.PlayerWithSwordRight2},
+		{maze.PlayerRight, maze.PlayerRight2},
+	},
+	{ // Up
+		{maze.PlayerWithTreasureUp, maze.PlayerWithTreasureUp2},
+		{maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2},
+		{maze.PlayerUpDown, maze.PlayerUpDown2},
+	},
+	{ // Down
+		{maze.PlayerWithTreasureDown, maze.PlayerWithTreasureDown2},
+		{maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2},
+		{maze.PlayerUpDown, maze.PlayerUpDown2},
+	},
+}
+
 func New() *Game {
 	maze := maze.New()
 	return &Game{
@@ -766,42 +797,21 @@ func movePlayer(g *Game, pos int) {
 }
 
 func playerMoveSprites(direction int, hasTreasure, hasSword bool) (byte, byte) {
-	switch direction {
-	case directionRight:
-		if hasTreasure {
-			return maze.PlayerWithTreasureRight, maze.PlayerWithTreasureRight2
-		}
-		if hasSword {
-			return maze.PlayerWithSwordRight, maze.PlayerWithSwordRight2
-		}
-		return maze.PlayerRight, maze.PlayerRight2
-	case directionUp:
-		if hasTreasure {
-			return maze.PlayerWithTreasureUp, maze.PlayerWithTreasureUp2
-		}
-		if hasSword {
-			return maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2
-		}
-		return maze.PlayerUpDown, maze.PlayerUpDown2
-	case directionDown:
-		if hasTreasure {
-			return maze.PlayerWithTreasureDown, maze.PlayerWithTreasureDown2
-		}
-		if hasSword {
-			return maze.PlayerWithSwordUpDown, maze.PlayerWithSwordUpDown2
-		}
-		return maze.PlayerUpDown, maze.PlayerUpDown2
-	case directionLeft:
-		if hasTreasure {
-			return maze.PlayerWithTreasureLeft, maze.PlayerWithTreasureLeft2
-		}
-		if hasSword {
-			return maze.PlayerWithSwordLeft, maze.PlayerWithSwordLeft2
-		}
-		return maze.PlayerLeft, maze.PlayerLeft2
-	default:
+	idx := direction - directionLeft
+	if idx < 0 || idx >= len(playerMoveTable) {
 		return maze.PlayerStanding, maze.PlayerStanding
 	}
+
+	stateIdx := 2
+	if hasSword {
+		stateIdx = 1
+	}
+	if hasTreasure {
+		stateIdx = 0
+	}
+
+	p := playerMoveTable[idx][stateIdx]
+	return p.first, p.second
 }
 
 func toggleSprite(current, first, second byte) byte {
