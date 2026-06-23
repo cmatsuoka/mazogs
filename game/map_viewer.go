@@ -62,7 +62,7 @@ func showMapViewer(g *Game) {
 			insertMazogsAndMarkPos(g)
 			waitKeyRelease()
 			moved = true
-		case "g", "G":
+		case "g", "G", "Escape":
 			return
 		}
 

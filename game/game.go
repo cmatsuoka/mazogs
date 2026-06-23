@@ -147,6 +147,11 @@ func (g *Game) Run() error {
 		if graphics.QuitRequested() {
 			return nil
 		}
+		// level 0 means the user pressed ESC on the level selection screen,
+		// so loop back to the title screen instead of starting a game.
+		if level == 0 {
+			continue
+		}
 		initialize(g, level)
 		if graphics.QuitRequested() {
 			return nil
@@ -245,6 +250,8 @@ func whichGame(g *Game) int {
 		graphics.Present()
 		graphics.WaitKey()
 		switch graphics.InKey() {
+		case "Escape":
+			return 0
 		case "1":
 			fillScreen(zxBlack)
 			renderWallBackground()
@@ -519,7 +526,7 @@ func gameLoop(g *Game) {
 		g.maze.ClearMaze()
 		g.maze.TraceRoute()
 		showSprites(g.maze, spriteGridColumns) // render route markers
-		graphics.Present()     // show immediately so the route is visible during the delay
+		graphics.Present()                     // show immediately so the route is visible during the delay
 		g.wayShown = true
 		g.wayShownAt = time.Now()
 		g.moving = false
